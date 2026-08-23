@@ -36,7 +36,21 @@ seedDatabase();
 
 const app = express();
 app.set("trust proxy", 1);
-app.use(helmet());
+// The default Helmet CSP blocks cross-origin form POSTs (`form-action 'self'`),
+// which silently prevents the eSewa payment redirect (the gateway is reached
+// via a hidden form submit to esewa.com.np). Allow HTTPS form submissions so
+// payment gateways work in both sandbox and live modes while keeping the rest
+// of the CSP intact. Khalti redirects via a plain link, so it is unaffected.
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "form-action": ["'self'", "https:"],
+      },
+    },
+  })
+);
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
 app.use("/uploads", express.static(path.join(UPLOAD_DIR)));
