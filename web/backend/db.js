@@ -45,7 +45,7 @@ const EMPTY_DB = {
         enabled: true,
         testMode: true,
         productCode: "EPAYTEST",
-        secretKey: "8gBm/:&EnhH.1/q(",
+        secretKey: "8gBm/:&EnhH.1/q",
       },
       khalti: {
         enabled: true,

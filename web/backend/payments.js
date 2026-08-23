@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { getDb } from "./db.js";
 
-const ESEWA_SANDBOX_SECRET = "8gBm/:&EnhH.1/q(";
+const ESEWA_SANDBOX_SECRET = "8gBm/:&EnhH.1/q";
 const ESEWA_SANDBOX_PRODUCT_CODE = "EPAYTEST";
 
 export function esewaConfig() {
