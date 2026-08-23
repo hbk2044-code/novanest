@@ -81,7 +81,7 @@ export const NEPAL_PROVINCES = [
       { name: "Banke", cities: ["Nepalgunj", "Kohalpur", "Khajura", "Janki", "Baijanath", "Duduwa", "Narainapur", "Rapti Sonari"] },
       { name: "Rolpa", cities: ["Rolpa", "Madi", "Thawang", "Sunchhahari", "Lungri", "Gangadev", "Tribeni", "Pariwartan", "Runtigadi", "Sunil Smriti"] },
       { name: "Pyuthan", cities: ["Pyuthan", "Sworgadwary", "Ayirabat", "Gaumukhi", "Jhimruk", "Naubahini", "Mandavi", "Mallarani", "Sarumarani"] },
-      { name: "Gulmi", cities: ["Resunga", "Musikot", "Ruru", "Isma", "Madane", "Malika", "Chatrakot", "Chatrakot", "Satyawati", "Chandrakot", "Kaligandaki", "Gulmidarbar"] },
+      { name: "Gulmi", cities: ["Resunga", "Musikot", "Ruru", "Isma", "Madane", "Malika", "Chatrakot", "Satyawati", "Chandrakot", "Kaligandaki", "Gulmidarbar"] },
       { name: "Arghakhanchi", cities: ["Bhumekasthan", "Sitganga", "Sandhikharka", "Panini", "Chhatradev", "Malarani"] },
       { name: "Palpa", cities: ["Tansen", "Rampur", "Rambha", "Tinau", "Nisdi", "Mathagadhi", "Ribdikot", "Purbakhola", "Bagnaskali", "Rainadevi"] },
       { name: "Nawalparasi West", cities: ["Bardaghat", "Sunwal", "Ramgram", "Sarawal", "Susta", "Pratappur", "Palhi Nandan"] },
