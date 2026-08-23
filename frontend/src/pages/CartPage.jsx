@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useCart } from '../context/CartContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { useToast } from '../components/Toast.jsx'
-import { formatPrice, categoryGradient, categoryIcon } from '../api.js'
+import { formatPrice, categoryGradient, categoryIcon, resolveImage } from '../api.js'
 
 const FREE_SHIP_THRESHOLD = 2000
 
@@ -82,7 +82,7 @@ export default function CartPage() {
               >
                 {item.product.image ? (
                   <img
-                    src={item.product.image}
+                    src={resolveImage(item.product.image)}
                     alt={item.product.name}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     onError={(e) => { e.target.style.display = 'none' }}

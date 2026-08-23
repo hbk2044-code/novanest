@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { api, formatPrice, formatDate, categoryGradient, categoryIcon } from '../api.js'
+import { api, formatPrice, formatDate, categoryGradient, categoryIcon, resolveImage } from '../api.js'
 import { useLang } from '../context/LanguageContext.jsx'
 import { useToast } from '../components/Toast.jsx'
 
@@ -153,7 +153,7 @@ export default function OrdersPage() {
                 >
                   {item.image ? (
                     <img
-                      src={item.image}
+                      src={resolveImage(item.image)}
                       alt={item.productName}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       onError={(e) => { e.target.style.display = 'none' }}

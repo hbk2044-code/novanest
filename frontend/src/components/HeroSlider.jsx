@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useLang } from '../context/LanguageContext.jsx'
+import { resolveImage } from '../api.js'
 
 const FONT_SIZE_MAP = {
   small: { fontSize: 30, subtitle: 15 },
@@ -36,7 +37,7 @@ export default function HeroSlider({ banners, autoPlayMs = 6000 }) {
   const backgroundStyle = (() => {
     if (banner.bgType === 'image' && banner.image) {
       return {
-        backgroundImage: `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url(${banner.image})`,
+        backgroundImage: `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url(${resolveImage(banner.image)})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }
@@ -114,7 +115,7 @@ export default function HeroSlider({ banners, autoPlayMs = 6000 }) {
 
       {banner.image && banner.bgType !== 'image' && (
         <div style={{ position: 'absolute', right: 32, top: 32, bottom: 32, width: '36%', borderRadius: 18, overflow: 'hidden', opacity: 0.95, boxShadow: '0 18px 40px rgba(0,0,0,0.25)' }}>
-          <img src={banner.image} alt={banner.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src={resolveImage(banner.image)} alt={banner.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
       )}
 

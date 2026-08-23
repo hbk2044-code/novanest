@@ -98,6 +98,63 @@ No admin password is committed to this repository. The admin account is provisio
 |------|-------|----------|
 | Customer | `demo@novanest.com` | `demo123` |
 
+### Mobile app (Android / iOS) with Capacitor
+
+The storefront is wrapped as a native app with Capacitor — no rewrite. The app
+runs the same built web app in a WebView and talks to the backend over HTTPS.
+
+Requirements: a **publicly reachable HTTPS API base**. The web build uses a
+same-origin `/api` path; native builds call the backend directly, so before
+shipping the app you must point the app at your real domain. Two ways:
+
+- Build-time env var: create `frontend/.env.production` (used for the mobile
+  build only) with `VITE_API_URL=https://yourdomain.com/api`.
+- Or edit `NATIVE_API_BASE` at the top of `frontend/src/api.js`.
+
+#### Android (buildable on Linux/macOS/Windows)
+
+```bash
+cd frontend
+npm install
+npm run build            # build the web app into dist/
+npx cap add android      # one-time: creates the android/ project
+npx cap sync             # copy dist/ into the Android project
+npx cap open android     # with Android Studio: Run → device/emulator
+```
+
+Command-line APK without Android Studio: install JDK 17 and the Android SDK
+(`ANDROID_HOME` set, `platforms;android-36` installed), then:
+
+```bash
+cd frontend/android
+export ANDROID_HOME=/opt/android-sdk
+./gradlew assembleDebug
+# APK: frontend/android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+A debug APK is unsigned; for the Play Store you need a signed release build
+(`./gradlew bundleRelease` with a keystore).
+
+#### iOS (requires a Mac with Xcode)
+
+```bash
+cd frontend
+npm run build
+npx cap add ios          # creates the ios/ project
+npx cap sync
+npx cap open ios         # Xcode: set a team, choose a bundle id, Run
+```
+
+Notes:
+
+- `frontend/android/` is committed so builds are reproducible; generated build
+  artifacts and copied web assets are git-ignored and refreshed by
+  `npx cap sync`.
+- The admin panel is browser-only (log in from a desktop web browser at
+  `/admin`).
+- All payments still happen through the backend; no payment SDK is bundled into
+  the app.
+
 ## Deployment
 
 Ready-to-use deployment files are in the `deploy/` folder:

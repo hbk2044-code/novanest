@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { api, formatPrice, categoryGradient, categoryIcon } from '../api.js'
+import { api, formatPrice, categoryGradient, categoryIcon, resolveImage } from '../api.js'
 import { useCart } from '../context/CartContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
@@ -181,7 +181,7 @@ export default function ProductDetail() {
           )}
           {mainImage && !imgFailed ? (
             <img
-              src={mainImage}
+              src={resolveImage(mainImage)}
               alt={product.name}
               onError={() => setImgFailed(true)}
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
@@ -218,7 +218,7 @@ export default function ProductDetail() {
                     cursor: 'pointer',
                   }}
                 >
-                  <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={resolveImage(img)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </button>
               ))}
             </div>
@@ -491,9 +491,9 @@ export default function ProductDetail() {
                 {Array.isArray(r.images) && r.images.length > 0 && (
                   <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
                     {r.images.map((img, i) => (
-                      <a key={i} href={img} target="_blank" rel="noreferrer">
+                      <a key={i} href={resolveImage(img)} target="_blank" rel="noreferrer">
                         <img
-                          src={img}
+                          src={resolveImage(img)}
                           alt={t('product.reviewPhoto', { n: i + 1 })}
                           style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)' }}
                           loading="lazy"

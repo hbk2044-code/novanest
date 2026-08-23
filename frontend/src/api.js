@@ -1,4 +1,29 @@
-const API_BASE = '/api'
+import { Capacitor } from '@capacitor/core'
+
+// The web app calls the backend same-origin via a relative '/api' path. In a
+// native (Capacitor) build the webview origin is local, so we must call the
+// backend over HTTPS. Set VITE_API_URL at build time (e.g. in a .env.production
+// for mobile) or replace the default below with your production API root
+// BEFORE releasing the app.
+const NATIVE_API_BASE = 'https://3001-e3a0e157679840f9.monkeycode-ai.live/api'
+
+const IS_NATIVE = Capacitor.isNativePlatform()
+
+const API_BASE = IS_NATIVE
+  ? (import.meta.env.VITE_API_URL
+    ? String(import.meta.env.VITE_API_URL).replace(/\/+$/, '')
+    : NATIVE_API_BASE)
+  : '/api'
+
+// Resolves relative media URLs (/uploads/...) to absolute ones in native builds,
+// where the webview cannot reach the backend's static file path on its own.
+export function resolveImage(url) {
+  if (!url) return url
+  if (/^https?:\/\//i.test(url)) return url
+  if (!IS_NATIVE) return url
+  const base = API_BASE.replace(/\/api$/, '').replace(/\/+$/, '')
+  return url.startsWith('/') ? base + url : base + '/' + url
+}
 
 function getToken() {
   return localStorage.getItem('novanest_token') || ''

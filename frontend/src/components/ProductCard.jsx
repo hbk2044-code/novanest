@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { formatPrice, categoryGradient, categoryIcon } from '../api.js'
+import { formatPrice, categoryGradient, categoryIcon, resolveImage } from '../api.js'
 import { useCart } from '../context/CartContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
@@ -35,7 +35,7 @@ export default function ProductCard({ product, compact }) {
         {discount > 0 && <span className="discount-tag">-{discount}%</span>}
         {showImage ? (
           <img
-            src={product.image}
+            src={resolveImage(product.image)}
             alt={product.name}
             onError={() => setImgFailed(true)}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
