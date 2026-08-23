@@ -1,7 +1,7 @@
 {
   "appId": "com.novanest.app",
   "appName": "NovaNest",
-  "webDir": "dist",
+  "webDir": "../web/frontend/dist",
   "server": {
     "androidScheme": "https"
   },

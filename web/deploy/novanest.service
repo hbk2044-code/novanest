@@ -6,7 +6,9 @@
 #   sudo systemctl enable --now novanest
 #
 # Assumes the repo is at /opt/novanest (adjust WorkingDirectory to your path).
-# The process manager loads backend/.env itself, so no env-file flags are used.
+# The web app project lives in the repo's `web/` folder, so the node entry is
+# /opt/novanest/web/backend/server.js. The process manager loads
+# web/backend/.env itself, so no env-file flags are used.
 
 [Unit]
 Description=NovaNest marketplace
@@ -15,8 +17,8 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/novanest
-ExecStart=/usr/bin/node /opt/novanest/backend/server.js
+WorkingDirectory=/opt/novanest/web
+ExecStart=/usr/bin/node /opt/novanest/web/backend/server.js
 Restart=always
 RestartSec=3
 Environment=NODE_ENV=production

@@ -1,6 +1,6 @@
 # NovaNest - Docker Compose (Hostinger VPS / Cloud / any Docker host)
 #
-# Usage:
+# Run from inside the `web/` project folder:
 #   cp backend/.env.example backend/.env   # then edit JWT_SECRET, ADMIN_*, etc.
 #   docker compose -f deploy/docker-compose.yml up -d --build
 #

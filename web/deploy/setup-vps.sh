@@ -8,10 +8,10 @@
 #   4. Installs the nginx site (deploy/nginx.conf) and starts the app under pm2
 #
 # Usage:
-#   bash deploy/setup-vps.sh <your-repo-git-url> [your-domain]
+#   bash web/deploy/setup-vps.sh <your-repo-git-url> [your-domain]
 #
 # After it finishes:
-#   - Edit /opt/novanest/backend/.env  (JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, payment keys)
+#   - Edit /opt/novanest/web/backend/.env  (JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, payment keys)
 #   - sudo nano /etc/nginx/sites-available/novanest   # set your real domain
 #   - sudo certbot --nginx -d your-domain             # enable HTTPS
 
@@ -37,33 +37,33 @@ npm install -g pm2
 if [ ! -d "$APP_DIR/.git" ]; then
   git clone "$REPO_URL" "$APP_DIR"
 fi
-cd "$APP_DIR"
+cd "$APP_DIR/web"
 git pull --rebase
 
 cd backend
 npm ci --omit=dev
 if [ ! -f .env ]; then
   cp .env.example .env
-  echo "NOTE: created backend/.env - you MUST edit it (JWT_SECRET, ADMIN_*) before going live."
+  echo "NOTE: created web/backend/.env - you MUST edit it (JWT_SECRET, ADMIN_*) before going live."
 fi
 cd ../frontend
 npm ci
 npm run build
 
 # --- 3. Reverse proxy ---------------------------------------------------------
-sed "s/shop.example.com/$DOMAIN/g" "$APP_DIR/deploy/nginx.conf" \
+sed "s/shop.example.com/$DOMAIN/g" "$APP_DIR/web/deploy/nginx.conf" \
   > /etc/nginx/sites-available/novanest
 ln -sf /etc/nginx/sites-available/novanest /etc/nginx/sites-enabled/novanest
 nginx -t && systemctl reload nginx
 
 # --- 4. Start under pm2 -------------------------------------------------------
-cd "$APP_DIR"
+cd "$APP_DIR/web"
 pm2 start deploy/ecosystem.config.js
 pm2 save
 
 echo
 echo "Done. NovaNest is running on http://localhost:3001 (proxied via nginx)."
 echo "Next steps:"
-echo "  1. nano $APP_DIR/backend/.env        # set JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, payment keys"
+echo "  1. nano $APP_DIR/web/backend/.env   # set JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, payment keys"
 echo "  2. pm2 restart novanest"
 echo "  3. sudo certbot --nginx -d $DOMAIN   # enable HTTPS"

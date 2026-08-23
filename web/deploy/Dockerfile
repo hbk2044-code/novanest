@@ -1,6 +1,8 @@
 # NovaNest - multi-stage production image (VPS / Hostinger Cloud / Docker)
 #
-# Build:
+# Build from inside the `web/` project folder (the build context is web/, which
+# contains backend/ + frontend/ + deploy/):
+#   cd web
 #   docker build -f deploy/Dockerfile -t novanest .
 # Run:
 #   docker run -d -p 3001:3001 --env-file backend/.env \

@@ -12,8 +12,8 @@ for data.
 ## 1. Important: application root must be outside `public_html`
 
 Everything the app writes — `backend/data/novanest.json`, `backend/uploads/`, and
-`backend/.env` — lives inside the app folder. If that folder is web-accessible,
-visitors could download your database and secrets.
+`backend/.env` — lives inside the app folder (i.e. under `novanest/web`). If that
+folder is web-accessible, visitors could download your database and secrets.
 
 In hPanel **Node.js**, set the **Application root** to a folder that is **not**
 inside the web root, for example:
@@ -38,7 +38,7 @@ In hPanel open **Advanced → Terminal** (or connect via SSH) and run:
 ```bash
 cd ~
 git clone <your-repo-url> novanest
-cd novanest
+cd novanest/web
 cd backend && npm install
 cd ../frontend && npm install
 ```
@@ -48,7 +48,7 @@ cd ../frontend && npm install
 ## 3. Create `backend/.env`
 
 ```bash
-cd ~/novanest/backend
+cd ~/novanest/web/backend
 cp .env.example .env
 nano .env
 ```
@@ -68,7 +68,7 @@ Leave payment keys in sandbox mode until you have live merchant credentials.
 > but on shared hosting the defaults inside the app folder are fine.
 
 > **Lost the admin password?** Stop the Node.js app in hPanel, then in
-> `~/novanest/backend` run `ADMIN_PASSWORD='Strong-New-Pass!' node reset-admin.js`,
+> `~/novanest/web/backend` run `ADMIN_PASSWORD='Strong-New-Pass!' node reset-admin.js`,
 > and restart the app in hPanel. This rotates the existing admin account (or creates
 > one if none exists). Never hand-edit `backend/data/novanest.json` to reset
 > credentials — the running app holds the DB in memory and will overwrite the file
@@ -79,7 +79,7 @@ Leave payment keys in sandbox mode until you have live merchant credentials.
 ## 4. Build the frontend (one-time and after every code update)
 
 ```bash
-cd ~/novanest/frontend
+cd ~/novanest/web/frontend
 npm run build
 ```
 
@@ -93,7 +93,7 @@ API — the frontend and backend are a single app on one port.
 Go to **hPanel → Advanced → Node.js → Create Node.js app**:
 
 1. **Node.js version**: select 22.x (or the newest available).
-2. **Application root**: `novanest` (the folder you cloned into).
+2. **Application root**: `novanest/web` (the folder you cloned into).
 3. **Application startup file**: `backend/server.js`
    - The app loads `.env` itself and serves both the API and the built frontend,
      so no extra flags or a separate frontend process are needed.

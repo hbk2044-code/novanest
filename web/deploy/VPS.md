@@ -11,17 +11,17 @@ You have full root access, so you can pick any of the three options below.
 On a fresh Ubuntu/Debian VPS:
 
 ```bash
-bash deploy/setup-vps.sh <your-repo-git-url> your-domain.com
+bash web/deploy/setup-vps.sh <your-repo-git-url> your-domain.com
 ```
 
 This installs Node.js 22, nginx, and pm2; clones the repo to `/opt/novanest`;
-installs dependencies; creates `backend/.env`; builds the frontend; installs the
-nginx site; and starts the app under pm2.
+installs dependencies (in `/opt/novanest/web`); creates `backend/.env`; builds the
+frontend; installs the nginx site; and starts the app under pm2.
 
 Then finish the config:
 
 ```bash
-nano /opt/novanest/backend/.env     # JWT_SECRET (openssl rand -hex 32), ADMIN_EMAIL, ADMIN_PASSWORD, payment keys
+nano /opt/novanest/web/backend/.env     # JWT_SECRET (openssl rand -hex 32), ADMIN_EMAIL, ADMIN_PASSWORD, payment keys
 pm2 restart novanest
 sudo certbot --nginx -d your-domain.com   # HTTPS
 ```
@@ -30,16 +30,18 @@ sudo certbot --nginx -d your-domain.com   # HTTPS
 > missing **or still set to the placeholder** `change-me-to-a-long-random-hex-string`.
 
 > **Lost the admin password?** Stop the server, then run
-> `ADMIN_PASSWORD='Strong-New-Pass!' node backend/reset-admin.js` (inside `backend/`)
-> and restart. It rotates the existing admin account (or creates one). Never hand-edit
-> `backend/data/novanest.json` to reset credentials while the server is running —
-> the live server holds the DB in memory and will overwrite the file on next save.
+> `ADMIN_PASSWORD='Strong-New-Pass!' node backend/reset-admin.js` (inside
+> `/opt/novanest/web/backend`) and restart. It rotates the existing admin account
+> (or creates one). Never hand-edit `backend/data/novanest.json` to reset
+> credentials while the server is running — the live server holds the DB in memory
+> and will overwrite the file on next save.
 
 ---
 
 ## Option B — Docker
 
 ```bash
+# run from inside the web/ project folder
 cp backend/.env.example backend/.env   # edit JWT_SECRET, ADMIN_*, payment keys
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
@@ -58,7 +60,7 @@ curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
 sudo apt-get install -y nodejs nginx
 
 # 2. Get the code
-git clone <your-repo-url> /opt/novanest && cd /opt/novanest
+git clone <your-repo-url> /opt/novanest && cd /opt/novanest/web
 cd backend && npm ci && cp .env.example .env && nano .env
 cd ../frontend && npm ci && npm run build
 
@@ -87,5 +89,6 @@ sudo certbot --nginx -d your-domain.com
    disk. They survive restarts and pm2/systemd restarts. If you want them on a
    separate data disk, set `DATA_DIR` and `UPLOAD_DIR` to absolute paths and
    restart the app.
-4. **Updating** — `git pull`, `cd frontend && npm run build`, then
-   `pm2 reload novanest` (or `sudo systemctl restart novanest` / rebuild Docker).
+4. **Updating** — `git pull` (inside `/opt/novanest/web`), `cd frontend && npm
+   run build`, then `pm2 reload novanest` (or `sudo systemctl restart novanest`
+   / rebuild Docker).
