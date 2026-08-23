@@ -15,6 +15,16 @@ const API_BASE = IS_NATIVE
     : NATIVE_API_BASE)
   : '/api'
 
+// Origin of the backend (e.g. https://yourdomain.com). Payment gateways must
+// redirect back to a reachable HTTP(S) origin — never the native webview's
+// "https://localhost". On the web the app is served from the backend origin.
+export function apiOrigin() {
+  if (API_BASE.startsWith('http')) {
+    return API_BASE.replace(/\/api$/, '').replace(/\/+$/, '')
+  }
+  return window.location.origin
+}
+
 // Resolves relative media URLs (/uploads/...) to absolute ones in native builds,
 // where the webview cannot reach the backend's static file path on its own.
 export function resolveImage(url) {

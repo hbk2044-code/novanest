@@ -1,6 +1,7 @@
 import { Router } from "express";
+import crypto from "node:crypto";
 import { getDb, saveDb } from "../db.js";
-import { authRequired } from "../middleware.js";
+import { authOptional, authRequired } from "../middleware.js";
 import {
   esewaConfig,
   generateTransactionUuid,
@@ -43,6 +44,31 @@ function findOwnOrder(req, res) {
   return order;
 }
 
+// One-time token that lets the payment callback page verify an order even when
+// the JWT is unavailable. This happens on mobile: the native WebView's local
+// storage is origin-scoped, so after the gateway redirects the WebView back to
+// the backend origin, the app's token is not present there. The token is random,
+// stored server-side on the order, and cleared after a successful verification.
+function resolveVerifyOrder(req) {
+  const db = getDb();
+  const body = req.body || {};
+  const orderId = Number(body.orderId);
+  if (!orderId) return null;
+  if (req.user) {
+    const own = db.orders.find((o) => o.id === orderId && o.userId === req.user.id);
+    if (own) return own;
+  }
+  const token = String(body.token || "").trim();
+  if (!token) return null;
+  return db.orders.find((o) => o.id === orderId && o.payment?.verifyToken === token);
+}
+
+function clearVerifyToken(order) {
+  if (order.payment?.verifyToken) {
+    delete order.payment.verifyToken;
+  }
+}
+
 function normalizeBase(base) {
   if (!base) return "";
   return String(base).replace(/\/+$/, "");
@@ -78,8 +104,9 @@ router.post("/esewa/initiate", authRequired, async (req, res) => {
     });
   }
   const uuid = order.payment?.transactionUuid || generateTransactionUuid(order.id);
-  const successUrl = `${base}/payment/result?provider=esewa&orderId=${order.id}`;
-  const failureUrl = `${base}/payment/result?provider=esewa&orderId=${order.id}`;
+  const verifyToken = order.payment?.verifyToken || crypto.randomBytes(18).toString("hex");
+  const successUrl = `${base}/payment/result?provider=esewa&orderId=${order.id}&token=${verifyToken}`;
+  const failureUrl = `${base}/payment/result?provider=esewa&orderId=${order.id}&token=${verifyToken}`;
 
   const values = {
     amount: String(order.subtotal || 0),
@@ -98,6 +125,7 @@ router.post("/esewa/initiate", authRequired, async (req, res) => {
     provider: "esewa",
     status: "initiated",
     transactionUuid: uuid,
+    verifyToken,
     initiatedAt: new Date().toISOString(),
   };
   saveDb();
@@ -113,10 +141,12 @@ router.post("/esewa/initiate", authRequired, async (req, res) => {
   });
 });
 
-router.post("/esewa/verify", authRequired, async (req, res) => {
+router.post("/esewa/verify", authOptional, async (req, res) => {
   const db = getDb();
-  const order = findOwnOrder(req, res);
-  if (!order) return;
+  const order = resolveVerifyOrder(req);
+  if (!order) {
+    return res.status(404).json({ message: "Order not found" });
+  }
 
   if (order.paymentStatus === "paid") {
     return res.json({ success: true, alreadyPaid: true, order: orderResponse(order) });
@@ -164,6 +194,7 @@ router.post("/esewa/verify", authRequired, async (req, res) => {
     refId: payload.transaction_code || statusRes.data?.ref_id || "",
     paidAt: new Date().toISOString(),
   };
+  clearVerifyToken(order);
   saveDb();
 
   res.json({ success: true, order: orderResponse(order) });
@@ -214,7 +245,8 @@ router.post("/khalti/initiate", authRequired, async (req, res) => {
     });
   }
 
-  const returnUrl = `${base}/payment/result?provider=khalti&orderId=${order.id}`;
+  const verifyToken = order.payment?.verifyToken || crypto.randomBytes(18).toString("hex");
+  const returnUrl = `${base}/payment/result?provider=khalti&orderId=${order.id}&token=${verifyToken}`;
   const customer = db.users.find((u) => u.id === req.user.id);
   const init = await khaltiInitiate({
     returnUrl,
@@ -237,6 +269,7 @@ router.post("/khalti/initiate", authRequired, async (req, res) => {
     status: "initiated",
     pidx: init.data.pidx,
     paymentUrl: init.data.payment_url,
+    verifyToken,
     initiatedAt: new Date().toISOString(),
   };
   saveDb();
@@ -248,10 +281,12 @@ router.post("/khalti/initiate", authRequired, async (req, res) => {
   });
 });
 
-router.post("/khalti/verify", authRequired, async (req, res) => {
+router.post("/khalti/verify", authOptional, async (req, res) => {
   const db = getDb();
-  const order = findOwnOrder(req, res);
-  if (!order) return;
+  const order = resolveVerifyOrder(req);
+  if (!order) {
+    return res.status(404).json({ message: "Order not found" });
+  }
 
   if (order.paymentStatus === "paid") {
     return res.json({ success: true, alreadyPaid: true, order: orderResponse(order) });
@@ -285,6 +320,7 @@ router.post("/khalti/verify", authRequired, async (req, res) => {
     transactionId: lookup.data.transaction_id || "",
     paidAt: new Date().toISOString(),
   };
+  clearVerifyToken(order);
   saveDb();
 
   res.json({ success: true, order: orderResponse(order) });

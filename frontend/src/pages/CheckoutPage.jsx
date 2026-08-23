@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { useToast } from '../components/Toast.jsx'
-import { api, formatPrice, categoryGradient, categoryIcon, resolveImage } from '../api.js'
+import { api, apiOrigin, formatPrice, categoryGradient, categoryIcon, resolveImage } from '../api.js'
 
 const FREE_SHIP_THRESHOLD = 2000
 
@@ -135,7 +135,7 @@ export default function CheckoutPage() {
         navigate(`/orders?highlight=${order.id}`)
         return
       }
-      const callbackBase = window.location.origin
+      const callbackBase = apiOrigin()
       if (paymentMethod === 'eSewa') {
         const init = await api.post('/payments/esewa/initiate', { orderId: order.id, callbackBase })
         submitEsewaForm(init.formUrl, init.fields)

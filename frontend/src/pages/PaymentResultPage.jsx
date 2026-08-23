@@ -13,6 +13,7 @@ export default function PaymentResultPage() {
   useEffect(() => {
     const provider = params.get('provider')
     const orderId = params.get('orderId')
+    const token = params.get('token') || ''
     if (!provider || !orderId) {
       setError(t('payment.missingDetails'))
       setVerifying(false)
@@ -29,7 +30,7 @@ export default function PaymentResultPage() {
             setVerifying(false)
             return
           }
-          const d = await api.post('/payments/esewa/verify', { orderId, data, signature })
+          const d = await api.post('/payments/esewa/verify', { orderId, data, signature, token })
           setResult({ success: d.success, order: d.order })
         } else if (provider === 'khalti') {
           const status = params.get('status')
@@ -41,6 +42,7 @@ export default function PaymentResultPage() {
           const d = await api.post('/payments/khalti/verify', {
             orderId,
             pidx: params.get('pidx'),
+            token,
           })
           setResult({ success: d.success, order: d.order })
         } else {
