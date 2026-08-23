@@ -338,6 +338,7 @@ export const en = {
   'payment.notConfirmed': 'Payment Not Confirmed',
   'payment.supportNote': 'If money was deducted but not reflected here, please contact support with your order number.',
   'payment.goToOrders': 'Go to My Orders',
+  'payment.backToCart': 'Back to Cart',
   'payment.missingDetails': 'Missing payment details. Please check your order.',
   'payment.esewaMissing': 'eSewa did not return a payment confirmation. Your order was not charged.',
   'payment.khaltiIncomplete': 'Payment was not completed ({status}). You can try again or choose another method.',

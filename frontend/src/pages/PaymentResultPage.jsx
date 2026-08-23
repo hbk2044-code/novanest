@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, formatPrice } from '../api.js'
 import { useLang } from '../context/LanguageContext.jsx'
+import { useCart } from '../context/CartContext.jsx'
 
 export default function PaymentResultPage() {
   const { t } = useLang()
+  const { clearCart } = useCart()
   const [params] = useSearchParams()
   const [verifying, setVerifying] = useState(true)
   const [result, setResult] = useState(null)
@@ -32,6 +34,9 @@ export default function PaymentResultPage() {
           }
           const d = await api.post('/payments/esewa/verify', { orderId, data, signature, token })
           setResult({ success: d.success, order: d.order })
+          if (d.success) {
+            try { await clearCart() } catch (e) {}
+          }
         } else if (provider === 'khalti') {
           const status = params.get('status')
           if (status && String(status).toLowerCase() !== 'completed') {
@@ -45,6 +50,9 @@ export default function PaymentResultPage() {
             token,
           })
           setResult({ success: d.success, order: d.order })
+          if (d.success) {
+            try { await clearCart() } catch (e) {}
+          }
         } else {
           setError(t('payment.unknownProvider'))
           setVerifying(false)
@@ -85,6 +93,9 @@ export default function PaymentResultPage() {
           </p>
           <Link to="/orders" className="btn btn-primary" style={{ marginTop: 16 }}>
             {t('payment.goToOrders')}
+          </Link>
+          <Link to="/cart" className="btn btn-outline" style={{ marginTop: 16 }}>
+            {t('payment.backToCart')}
           </Link>
         </>
       )}

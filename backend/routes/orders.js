@@ -225,7 +225,12 @@ router.post("/checkout", (req, res) => {
     createdAt: new Date().toISOString(),
   };
   db.orders.push(order);
-  db.cartItems = db.cartItems.filter((ci) => ci.owner !== owner);
+  // Online payments are only "initiated" here. Keep the cart so that if the
+  // user abandons or cancels the payment they can still return to it. The cart
+  // is cleared server-side once payment is verified (see routes/payments.js).
+  if (!isOnline) {
+    db.cartItems = db.cartItems.filter((ci) => ci.owner !== owner);
+  }
   if (coupon) applyCoupon(db, coupon, discountAmount, owner, order.id);
   saveDb();
   res.status(201).json({ order: orderResponse(order, db) });

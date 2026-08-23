@@ -46,7 +46,10 @@ export function CartProvider({ children }) {
 
   const checkout = useCallback(async (payload) => {
     const data = await api.post('/orders/checkout', payload)
-    setCart({ items: [], subtotal: 0, count: 0 })
+    const onlinePayment = payload.paymentMethod === 'eSewa' || payload.paymentMethod === 'Khalti'
+    if (!onlinePayment) {
+      setCart({ items: [], subtotal: 0, count: 0 })
+    }
     return data.order
   }, [])
 

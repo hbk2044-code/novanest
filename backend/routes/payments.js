@@ -195,6 +195,7 @@ router.post("/esewa/verify", authOptional, async (req, res) => {
     paidAt: new Date().toISOString(),
   };
   clearVerifyToken(order);
+  db.cartItems = db.cartItems.filter((ci) => ci.owner !== order.owner);
   saveDb();
 
   res.json({ success: true, order: orderResponse(order) });
@@ -321,6 +322,7 @@ router.post("/khalti/verify", authOptional, async (req, res) => {
     paidAt: new Date().toISOString(),
   };
   clearVerifyToken(order);
+  db.cartItems = db.cartItems.filter((ci) => ci.owner !== order.owner);
   saveDb();
 
   res.json({ success: true, order: orderResponse(order) });
