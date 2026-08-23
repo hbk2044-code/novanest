@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api.js'
+import { useLang } from '../context/LanguageContext.jsx'
 import { useToast } from '../components/Toast.jsx'
 
 export default function ResetPasswordPage() {
+  const { t } = useLang()
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const toast = useToast()
@@ -19,13 +21,13 @@ export default function ResetPasswordPage() {
     e.preventDefault()
     setError('')
     if (!token.trim()) {
-      return setError('Please enter the reset code')
+      return setError(t('auth.enterCode'))
     }
     if (password.length < 6) {
-      return setError('Password must be at least 6 characters')
+      return setError(t('auth.passwordTooShort'))
     }
     if (password !== confirm) {
-      return setError('Passwords do not match')
+      return setError(t('auth.passwordsMismatch'))
     }
     setLoading(true)
     try {
@@ -35,9 +37,9 @@ export default function ResetPasswordPage() {
         { auth: false }
       )
       setDone(true)
-      toast.success('Password reset successful!')
+      toast.success(t('auth.resetSuccessful'))
     } catch (err) {
-      setError(err.message || 'Reset failed')
+      setError(err.message || t('auth.resetFailed'))
     } finally {
       setLoading(false)
     }
@@ -47,13 +49,12 @@ export default function ResetPasswordPage() {
     return (
       <div className="auth-wrap">
         <div className="auth-card">
-          <h1>Password Reset ✅</h1>
+          <h1>{t('auth.resetDone')}</h1>
           <p className="sub">
-            Your password has been updated successfully. You can now login with your
-            new password.
+            {t('auth.resetDoneSub')}
           </p>
           <Link to="/login" className="btn btn-primary btn-block btn-lg">
-            Go to Login
+            {t('auth.goToLogin')}
           </Link>
         </div>
       </div>
@@ -63,16 +64,16 @@ export default function ResetPasswordPage() {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <h1>Reset Password</h1>
-        <p className="sub">Enter your reset code and choose a new password.</p>
+        <h1>{t('auth.resetTitle')}</h1>
+        <p className="sub">{t('auth.resetSub')}</p>
 
         {error && <div className="error-banner">{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Reset Code *</label>
+            <label>{t('auth.resetCode')} *</label>
             <input
-              placeholder="Paste your reset code here"
+              placeholder={t('auth.resetCodePlaceholder')}
               value={token}
               onChange={(e) => setToken(e.target.value)}
               required
@@ -80,20 +81,20 @@ export default function ResetPasswordPage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="form-group">
-              <label>New Password *</label>
+              <label>{t('auth.newPassword')} *</label>
               <input
                 type="password"
-                placeholder="Min 6 characters"
+                placeholder={t('auth.passwordMin')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
             <div className="form-group">
-              <label>Confirm Password *</label>
+              <label>{t('auth.confirmPassword')} *</label>
               <input
                 type="password"
-                placeholder="Repeat password"
+                placeholder={t('auth.repeatPassword')}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 required
@@ -101,12 +102,12 @@ export default function ResetPasswordPage() {
             </div>
           </div>
           <button className="btn btn-primary btn-block btn-lg" type="submit" disabled={loading}>
-            {loading ? 'Resetting...' : 'Reset Password'}
+            {loading ? t('auth.resetting') : t('auth.updatePassword')}
           </button>
         </form>
 
         <div className="auth-switch">
-          Need a new code? <Link to="/forgot-password">Request again</Link>
+          {t('auth.needNewCode')} <Link to="/forgot-password">{t('auth.requestAgain')}</Link>
         </div>
       </div>
     </div>

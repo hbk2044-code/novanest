@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom'
 import { formatPrice, categoryGradient, categoryIcon } from '../api.js'
 import { useCart } from '../context/CartContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useLang } from '../context/LanguageContext.jsx'
 import { useToast } from './Toast.jsx'
 
 export default function ProductCard({ product, compact }) {
   const { user } = useAuth()
   const { addToCart } = useCart()
+  const { t } = useLang()
   const toast = useToast()
   const [imgFailed, setImgFailed] = useState(false)
   const gradient = categoryGradient(product.categorySlug)
@@ -21,9 +23,9 @@ export default function ProductCard({ product, compact }) {
     e.preventDefault()
     try {
       await addToCart(product.id, 1)
-      toast.success(`${product.name} added to cart`)
+      toast.success(`${product.name} ${t('toast.addedToCart')}`)
     } catch (err) {
-      toast.error(err.message || 'Could not add to cart')
+      toast.error(err.message || t('toast.addedToCart'))
     }
   }
 
@@ -45,13 +47,16 @@ export default function ProductCard({ product, compact }) {
       <div className="p-body">
         <span className="p-cat">{product.categoryName}</span>
         <h3>{product.name}</h3>
-        <div className="p-rating">
-          {'★'.repeat(Math.round(product.rating))}
-          <span style={{ color: 'var(--muted)', fontWeight: 500 }}>
-            {' '}
-            {product.rating}
-          </span>
-        </div>
+        {product.ratingCount > 0 && (
+          <div className="p-rating">
+            {'★'.repeat(Math.round(product.rating || 0))}
+            <span style={{ color: 'var(--muted)', fontWeight: 500 }}>
+              {' '}
+              {product.rating}
+              <span> ({product.ratingCount})</span>
+            </span>
+          </div>
+        )}
         <div className="price-row">
           <span className="price">{formatPrice(product.price)}</span>
           {product.oldPrice && (
@@ -59,16 +64,16 @@ export default function ProductCard({ product, compact }) {
           )}
         </div>
         {product.stock <= 0 ? (
-          <span className="stock-msg">Out of stock</span>
+          <span className="stock-msg">{t('product.outOfStock')}</span>
         ) : product.stock <= 10 ? (
-          <span className="stock-msg">Only {product.stock} left</span>
+          <span className="stock-msg">{t('product.onlyLeft', { n: product.stock })}</span>
         ) : null}
         <button
           className="btn btn-primary btn-sm add-cart"
           onClick={handleAdd}
           disabled={product.stock <= 0}
         >
-          Add to Cart
+          {t('product.addToCart')}
         </button>
       </div>
     </Link>

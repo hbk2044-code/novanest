@@ -1,5 +1,6 @@
 import { Router } from "express";
 import crypto from "node:crypto";
+import rateLimit from "express-rate-limit";
 import {
   getDb,
   saveDb,
@@ -10,7 +11,8 @@ import {
   signToken,
   verifyToken,
 } from "../db.js";
-import { getSecret } from "../middleware.js";
+import { getSecret, authRequired } from "../middleware.js";
+import { sendMail } from "../mailer.js";
 
 const router = Router();
 
@@ -20,7 +22,22 @@ function validEmail(email) {
   return typeof email === "string" && EMAIL_RE.test(email);
 }
 
-router.post("/signup", (req, res) => {
+// Brute-force protection for credential endpoints. Applied per IP.
+function createLimiter(max) {
+  return rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many attempts. Please try again later." },
+  });
+}
+
+const signupLimiter = createLimiter(10);
+const loginLimiter = createLimiter(10);
+const forgotLimiter = createLimiter(5);
+
+router.post("/signup", signupLimiter, (req, res) => {
   const { name, email, password, phone, address } = req.body || {};
   if (!name || !String(name).trim()) {
     return res.status(400).json({ message: "Name is required" });
@@ -52,7 +69,7 @@ router.post("/signup", (req, res) => {
   res.status(201).json({ token, user: publicUser(user) });
 });
 
-router.post("/login", (req, res) => {
+router.post("/login", loginLimiter, (req, res) => {
   const { email, password } = req.body || {};
   if (!validEmail(email) || !password) {
     return res.status(400).json({ message: "Email and password are required" });
@@ -81,39 +98,63 @@ router.get("/me", (req, res) => {
 });
 
 const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
+const RESET_BASE_URL =
+  process.env.APP_URL || `http://localhost:${process.env.PORT || 3001}`;
 
-router.post("/forgot-password", (req, res) => {
+router.post("/forgot-password", forgotLimiter, async (req, res) => {
   const { email } = req.body || {};
   if (!validEmail(email)) {
     return res.status(400).json({ message: "A valid email is required" });
   }
   const db = getDb();
   const user = db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-  if (!user) {
-    return res.status(404).json({ message: "No account found with this email address" });
+
+  if (user) {
+    // Invalidate any previously issued tokens for this user
+    db.passwordResets = db.passwordResets.filter((r) => r.userId !== user.id);
+
+    const token = crypto.randomBytes(24).toString("hex");
+    db.passwordResets.push({
+      id: nextId("reset"),
+      userId: user.id,
+      token,
+      expiresAt: new Date(Date.now() + RESET_TTL_MS).toISOString(),
+      used: false,
+      createdAt: new Date().toISOString(),
+    });
+    saveDb();
+
+    const resetUrl = `${RESET_BASE_URL}/reset-password?token=${token}`;
+    const minutes = RESET_TTL_MS / 60000;
+    try {
+      await sendMail({
+        to: user.email,
+        subject: "NovaNest password reset",
+        text:
+          `Hello ${user.name},\n\n` +
+          "A password reset was requested for your NovaNest account.\n\n" +
+          `Reset your password here: ${resetUrl}\n\n` +
+          `Or use this reset code: ${token}\n\n` +
+          `This link expires in ${minutes} minutes.\n\n` +
+          "If you didn't request this, you can ignore this email.",
+        html:
+          `<p>Hello <strong>${user.name}</strong>,</p>` +
+          "<p>A password reset was requested for your NovaNest account.</p>" +
+          `<p><a href="${resetUrl}">Reset your password</a></p>` +
+          `<p>Or use this reset code: <code>${token}</code></p>` +
+          `<p>This link expires in ${minutes} minutes.</p>` +
+          "<p>If you didn't request this, you can ignore this email.</p>",
+      });
+    } catch (e) {
+      // Never leak the token or reveal account existence via the response.
+      console.error("[NovaNest] Failed to send reset email:", e.message);
+    }
   }
 
-  // Invalidate any previously issued tokens for this user
-  db.passwordResets = db.passwordResets.filter((r) => r.userId !== user.id);
-
-  const token = crypto.randomBytes(24).toString("hex");
-  db.passwordResets.push({
-    id: nextId("reset"),
-    userId: user.id,
-    token,
-    expiresAt: new Date(Date.now() + RESET_TTL_MS).toISOString(),
-    used: false,
-    createdAt: new Date().toISOString(),
-  });
-  saveDb();
-
-  // NOTE: In production this token would be emailed to the user.
-  // For this demo environment we return it in the response so the
-  // reset link can be surfaced directly in the UI.
+  // Generic response - do not reveal whether the account exists (prevents
+  // account enumeration).
   res.json({
-    message: "Password reset code generated",
-    resetToken: token,
-    expiresInMinutes: RESET_TTL_MS / 60000,
+    message: "If an account exists for this email, a password reset link has been sent.",
   });
 });
 
@@ -146,6 +187,24 @@ router.post("/reset-password", (req, res) => {
   saveDb();
 
   res.json({ message: "Password reset successful. You can now login." });
+});
+
+router.post("/change-password", authRequired, (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  const db = getDb();
+  const user = db.users.find((u) => String(u.id) === String(req.user.id));
+  if (!user) {
+    return res.status(404).json({ message: "Account not found" });
+  }
+  if (!verifyPassword(String(currentPassword || ""), user.password)) {
+    return res.status(400).json({ message: "Current password is incorrect" });
+  }
+  if (!newPassword || String(newPassword).length < 6) {
+    return res.status(400).json({ message: "New password must be at least 6 characters" });
+  }
+  user.password = hashPassword(String(newPassword));
+  saveDb();
+  res.json({ message: "Password changed successfully" });
 });
 
 export default router;

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api.js'
+import { useLang } from '../context/LanguageContext.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import HeroSlider from '../components/HeroSlider.jsx'
 
 export default function Home() {
+  const { t } = useLang()
   const [categories, setCategories] = useState([])
   const [featured, setFeatured] = useState([])
   const [deals, setDeals] = useState([])
@@ -23,9 +25,9 @@ export default function Home() {
 
       <section style={{ marginBottom: 48 }}>
         <div className="section-title">
-          <h2>Shop by Category</h2>
+          <h2>{t('home.shopByCategory')}</h2>
           <Link to="/shop" style={{ color: 'var(--primary)', fontWeight: 700, fontSize: 14 }}>
-            View all →
+            {t('home.viewAll')} →
           </Link>
         </div>
         <div className="cat-grid">
@@ -33,7 +35,7 @@ export default function Home() {
             <Link key={c.id} to={`/shop?category=${c.slug}`} className="cat-card">
               <div className="cat-icon">{c.icon}</div>
               <h3>{c.name}</h3>
-              <p>{c.productCount} items</p>
+              <p>{t('home.items', { n: c.productCount })}</p>
             </Link>
           ))}
         </div>
@@ -41,9 +43,9 @@ export default function Home() {
 
       <section style={{ marginBottom: 48 }}>
         <div className="section-title">
-          <h2>Featured Products</h2>
+          <h2>{t('home.featured')}</h2>
           <Link to="/shop" style={{ color: 'var(--primary)', fontWeight: 700, fontSize: 14 }}>
-            See more →
+            {t('home.seeMore')} →
           </Link>
         </div>
         <div className="product-grid">
@@ -55,9 +57,9 @@ export default function Home() {
 
       <section style={{ marginBottom: 48 }}>
         <div className="section-title">
-          <h2>Hot Deals & Best Sellers</h2>
+          <h2>{t('home.hotDeals')}</h2>
           <Link to="/shop?sort=rating" style={{ color: 'var(--primary)', fontWeight: 700, fontSize: 14 }}>
-            Top rated →
+            {t('home.topRated')} →
           </Link>
         </div>
         <div className="product-grid">
@@ -80,12 +82,12 @@ export default function Home() {
         }}
       >
         <div>
-          <h2 style={{ fontSize: 26, fontWeight: 800 }}>Free delivery on orders over Rs. 2,000</h2>
+          <h2 style={{ fontSize: 26, fontWeight: 800 }}>{t('home.freeDelivery')}</h2>
           <p style={{ color: 'var(--muted)', marginTop: 8 }}>
-            Plus COD available all over Nepal. Your satisfaction is our nest.
+            {t('home.freeDeliverySub')}
           </p>
         </div>
-        <Link to="/shop" className="btn btn-primary btn-lg">Start Shopping</Link>
+        <Link to="/shop" className="btn btn-primary btn-lg">{t('home.startShopping')}</Link>
       </section>
     </div>
   )

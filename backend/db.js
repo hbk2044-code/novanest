@@ -5,7 +5,10 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, "data");
+// Persistent storage: override DATA_DIR to point at a mounted volume in
+// container/serverless deployments (e.g. DATA_DIR=/data). Defaults to a local
+// ./data folder which requires persistent disk on the host.
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const DB_FILE = path.join(DATA_DIR, "novanest.json");
 
 const EMPTY_DB = {
@@ -14,10 +17,13 @@ const EMPTY_DB = {
   products: [],
   cartItems: [],
   orders: [],
+  reviews: [],
+  coupons: [],
   stockMovements: [],
   purchases: [],
   passwordResets: [],
   settings: {
+    showDefaultRating: false,
     storeInfo: {
       companyName: "NovaNest",
       tagline: "Everything Nepal Needs, One Nest.",
@@ -33,6 +39,19 @@ const EMPTY_DB = {
       tagline: "Everything Nepal Needs, One Nest.",
       logo: "",
       icon: "🛍️",
+    },
+    payments: {
+      esewa: {
+        enabled: true,
+        testMode: true,
+        productCode: "EPAYTEST",
+        secretKey: "8gBm/:&EnhH.1/q(",
+      },
+      khalti: {
+        enabled: true,
+        testMode: true,
+        secretKey: "live_secret_key_68791341fdd94846a146f0457ff7b455",
+      },
     },
     checkoutFields: [
       {
@@ -219,6 +238,8 @@ const EMPTY_DB = {
     movement: 0,
     purchase: 0,
     payment: 0,
+    coupon: 0,
+    review: 0,
   },
 };
 
@@ -279,6 +300,21 @@ export function loadDb() {
       }
     }
   }
+  if (!db.settings.payments) {
+    db.settings.payments = structuredClone(EMPTY_DB.settings.payments);
+  } else {
+    for (const provider of ["esewa", "khalti"]) {
+      const def = EMPTY_DB.settings.payments[provider];
+      const cur = db.settings.payments[provider];
+      if (!cur) {
+        db.settings.payments[provider] = structuredClone(def);
+      } else {
+        for (const k of Object.keys(def)) {
+          if (cur[k] === undefined) cur[k] = def[k];
+        }
+      }
+    }
+  }
   if (!db.seq.field) db.seq.field = 8;
   if (!db.seq.banner) db.seq.banner = 4;
 
@@ -288,6 +324,43 @@ export function loadDb() {
   if (!db.purchases) db.purchases = [];
   if (!db.seq.purchase) db.seq.purchase = 0;
   if (!db.seq.payment) db.seq.payment = 0;
+
+  // ---- Reviews & coupons migration ----
+  if (!db.reviews) db.reviews = [];
+  if (!db.seq.review) db.seq.review = 0;
+  if (!db.coupons) db.coupons = [];
+  if (!db.seq.coupon) db.seq.coupon = db.coupons.length;
+
+  // When a product has no approved reviews yet, whether to fall back to the
+  // pre-set (static) rating on the product. Off by default so a new store
+  // never shows "fake" ratings; admins can enable it later.
+  if (db.settings?.showDefaultRating === undefined) db.settings.showDefaultRating = false;
+
+  // ---- Review moderation migration ----
+  // Existing reviews were published without moderation, so they migrate to
+  // "approved". New reviews start as "pending" until an admin approves them.
+  const statuses = new Set(["pending", "approved", "rejected", "hidden"]);
+  for (const r of db.reviews || []) {
+    if (!statuses.has(r.status)) r.status = "approved";
+    if (r.featured === undefined) r.featured = false;
+    if (!Array.isArray(r.images)) r.images = [];
+    if (r.verified === undefined) {
+      r.verified =
+        r.owner != null &&
+        db.orders.some(
+          (o) =>
+            o.owner === r.owner &&
+            o.status !== "cancelled" &&
+            (o.items || []).some((it) => String(it.productId) === String(r.productId))
+        );
+    }
+    if (r.updatedAt === undefined) r.updatedAt = r.createdAt;
+  }
+
+  // ---- Guest support migration ----
+  for (const ci of db.cartItems || []) {
+    if (ci.owner === undefined && ci.userId !== undefined) ci.owner = `user:${ci.userId}`;
+  }
 
   const catSlugById = Object.fromEntries((db.categories || []).map((c) => [c.id, c.slug]));
   for (const p of db.products) {
@@ -303,6 +376,10 @@ export function loadDb() {
     if (p.costPrice === undefined || (p.costPrice === 0 && (p.price || 0) > 0)) {
       p.costPrice = Math.round((p.price || 0) * 0.62);
     }
+    if (!Array.isArray(p.images)) {
+      p.images = p.image ? [p.image] : [];
+    }
+    if (p.image === undefined) p.image = "";
   }
 
   const hasInitial = db.stockMovements.some((m) => m.type === "initial");
@@ -324,6 +401,11 @@ export function loadDb() {
 
   // Backfill unitCost snapshots on existing orders for profit calculation
   for (const o of db.orders || []) {
+    if (o.owner === undefined) {
+      o.owner = o.userId != null ? `user:${o.userId}` : o.guestId ? `guest:${o.guestId}` : null;
+    }
+    if (o.discount === undefined) o.discount = 0;
+    if (o.coupon === undefined) o.coupon = null;
     for (const it of o.items || []) {
       if (it.unitCost === undefined) {
         const prod = db.products.find((p) => p.id === it.productId);

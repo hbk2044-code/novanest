@@ -1,19 +1,31 @@
 import { getDb, saveDb, nextId, hashPassword } from "./db.js";
+import crypto from "node:crypto";
 
 export function seedDatabase() {
   const db = getDb();
 
   if (db.users.length === 0) {
+    // Admin is provisioned from environment variables. If ADMIN_PASSWORD is not
+    // set we generate a random one and print it ONCE to the console so there is
+    // never a publicly-known default admin password committed to the repo.
+    const adminEmail = process.env.ADMIN_EMAIL || "admin@novanest.com";
+    const adminPassword = process.env.ADMIN_PASSWORD || crypto.randomBytes(16).toString("hex");
     db.users.push({
       id: nextId("user"),
       name: "NovaNest Admin",
-      email: "admin@novanest.com",
-      password: hashPassword("admin123"),
+      email: adminEmail,
+      password: hashPassword(adminPassword),
       role: "admin",
       phone: "9800000000",
       address: "Kathmandu, Nepal",
       createdAt: new Date().toISOString(),
     });
+    if (!process.env.ADMIN_PASSWORD) {
+      console.log(
+        `[NovaNest] Seeded admin account: ${adminEmail} / ${adminPassword} ` +
+          "(random, shown once). Set ADMIN_EMAIL/ADMIN_PASSWORD in backend/.env to control it."
+      );
+    }
     db.users.push({
       id: nextId("user"),
       name: "Demo Customer",
@@ -118,6 +130,59 @@ export function seedDatabase() {
       p.sku = `NN-${slug || "GEN"}-${String(p.id).padStart(4, "0")}`;
       db.products.push(p);
     }
+  }
+
+  if (db.coupons.length === 0) {
+    const C = (code, description, type, value, minSubtotal, maxDiscount, totalLimit) => ({
+      id: nextId("coupon"),
+      code,
+      description,
+      type,
+      value,
+      minSubtotal,
+      maxDiscount,
+      perUserLimit: 1,
+      totalLimit,
+      usedCount: 0,
+      redemptions: [],
+      active: true,
+      startDate: null,
+      endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+      createdAt: new Date().toISOString(),
+    });
+    db.coupons.push(
+      C("WELCOME10", "10% off your first order", "percent", 10, 500, null, 1000),
+      C("SAVE20", "20% off (max Rs. 300)", "percent", 20, 1000, 300, 500),
+      C("FIXED100", "Rs. 100 off any order", "fixed", 100, 800, null, 1000)
+    );
+  }
+
+  if (db.reviews.length === 0 && db.products.length > 0) {
+    const demoOwner = "user:2";
+    const guest = () => `guest:${crypto.randomUUID()}`;
+    const R = (productId, owner, name, rating, comment) => ({
+      id: nextId("review"),
+      productId,
+      owner,
+      name,
+      rating,
+      comment,
+      createdAt: new Date(Date.now() - Math.floor(Math.random() * 30) * 86400000).toISOString(),
+    });
+    db.reviews.push(
+      R(1, demoOwner, "Demo Customer", 5, "Fresh and juicy momos, delivered hot. Achar was perfect."),
+      R(1, guest(), "Sujan K.", 5, "Best momos in the city so far."),
+      R(1, guest(), "Pragya", 4, "Tasty but a little less spicy than I expected."),
+      R(2, demoOwner, "Demo Customer", 4, "Cheesy and fresh, arrived warm."),
+      R(2, guest(), "Ramesh", 5, "Wood-fired taste at home. Loved it."),
+      R(3, guest(), "Anita", 4, "Juicy burger, decent portion size."),
+      R(6, guest(), "Bibek", 5, "Great chowmein, generous veggies."),
+      R(7, demoOwner, "Demo Customer", 5, "Premium rice, cooks perfectly."),
+      R(15, guest(), "Sita", 4, "Soft cotton tee, fits well."),
+      R(22, guest(), "Hari", 5, "Authentic dal bhat taste. Highly recommended."),
+      R(26, guest(), "Meera", 4, "Nice cream, skin feels soft."),
+      R(24, guest(), "Kabita", 5, "Saree is gorgeous, stitching is neat.")
+    );
   }
 
   saveDb();

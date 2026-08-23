@@ -4,14 +4,52 @@ function getToken() {
   return localStorage.getItem('novanest_token') || ''
 }
 
+export function getGuestId() {
+  let id = localStorage.getItem('novanest_guest_id')
+  if (!id) {
+    id = (crypto.randomUUID && crypto.randomUUID()) ||
+      `guest-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    localStorage.setItem('novanest_guest_id', id)
+  }
+  return id
+}
+
 async function request(path, { method = 'GET', body, auth = true } = {}) {
-  const headers = { 'Content-Type': 'application/json' }
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Guest-Id': getGuestId(),
+  }
   const token = getToken()
   if (auth && token) headers['Authorization'] = `Bearer ${token}`
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
+  })
+  let data = null
+  try {
+    data = await res.json()
+  } catch (e) {
+    data = {}
+  }
+  if (!res.ok) {
+    const err = new Error(data.message || `Request failed (${res.status})`)
+    err.status = res.status
+    throw err
+  }
+  return data
+}
+
+// Multipart request (FormData) - no manual Content-Type so the browser sets the
+// multipart boundary. Used for review images.
+async function requestForm(path, { method = 'POST', body, auth = true } = {}) {
+  const headers = { 'X-Guest-Id': getGuestId() }
+  const token = getToken()
+  if (auth && token) headers['Authorization'] = `Bearer ${token}`
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers,
+    body,
   })
   let data = null
   try {
@@ -54,7 +92,10 @@ export const api = {
   get: (path, opts) => request(path, { ...opts, method: 'GET' }),
   post: (path, body, opts) => request(path, { ...opts, method: 'POST', body }),
   put: (path, body, opts) => request(path, { ...opts, method: 'PUT', body }),
+  patch: (path, body, opts) => request(path, { ...opts, method: 'PATCH', body }),
   del: (path, opts) => request(path, { ...opts, method: 'DELETE' }),
+  postForm: (path, body, opts) => requestForm(path, { ...opts, method: 'POST', body }),
+  putForm: (path, body, opts) => requestForm(path, { ...opts, method: 'PUT', body }),
   uploadImage,
 }
 

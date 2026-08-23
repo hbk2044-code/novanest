@@ -377,17 +377,17 @@ export default function AdminPurchases() {
                   <thead>
                     <tr>
                       <th>Product</th>
-                      <th style={{ width: 140 }}>Qty</th>
-                      <th style={{ width: 120 }}>Unit</th>
-                      <th style={{ width: 160 }}>Unit Cost (Rs.)</th>
-                      <th style={{ width: 130 }}>Subtotal</th>
-                      <th style={{ width: 60 }}></th>
+                      <th style={{ width: 80 }}>Qty</th>
+                      <th style={{ width: 90 }}>Unit</th>
+                      <th style={{ width: 120 }}>Unit Cost (Rs.)</th>
+                      <th style={{ width: 90 }}>Subtotal</th>
+                      <th style={{ width: 48 }}></th>
                     </tr>
                   </thead>
                   <tbody>
                     {form.items.map((it, idx) => (
                       <tr key={idx}>
-                        <td style={{ minWidth: 260 }}>
+                        <td style={{ minWidth: 200 }}>
                           <ProductPicker
                             products={products}
                             value={it.productId}
@@ -404,12 +404,12 @@ export default function AdminPurchases() {
                             onChange={setItem(idx, 'quantity')}
                             required
                             className="num-wide qty"
-                            style={{ width: 110 }}
+                            style={{ width: 72 }}
                             title="Quantity (up to 6+ digits)"
                           />
                         </td>
                         <td>
-                          <select value={it.unit || ''} onChange={setItem(idx, 'unit')} style={{ width: 100, padding: '10px 10px' }}>
+                          <select value={it.unit || ''} onChange={setItem(idx, 'unit')} style={{ width: 86, padding: '10px 8px' }}>
                             <option value="">Unit</option>
                             {UNITS.map((u) => (
                               <option key={u} value={u}>{u}</option>
@@ -426,11 +426,11 @@ export default function AdminPurchases() {
                             placeholder="0"
                             required
                             className="unit-cost-wide"
-                            style={{ width: 140 }}
+                            style={{ width: 108 }}
                             title="Unit cost in Rs."
                           />
                         </td>
-                        <td style={{ fontSize: 13, fontWeight: 600 }}>{formatPrice(lineTotal(it))}</td>
+                        <td style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>{formatPrice(lineTotal(it))}</td>
                         <td>
                           <button type="button" className="btn btn-danger btn-sm" onClick={() => removeItem(idx)}>✕</button>
                         </td>

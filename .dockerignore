@@ -1,0 +1,18 @@
+# VCS
+.git
+.gitignore
+
+# Never bake secrets or runtime data into the image
+**/.env
+**/.env.*
+backend/data
+backend/uploads
+
+# Dependencies and build output are installed/rebuilt inside the image
+**/node_modules
+frontend/dist
+
+# Misc
+*.log
+**/logs
+*.md

@@ -157,6 +157,16 @@ export default function AdminOrders() {
                 </>
               )}
               <div><strong>Payment:</strong> {selected.paymentMethod}</div>
+              {selected.payment?.provider && (
+                <div style={{ marginTop: 4 }}>
+                  <strong>Gateway ref:</strong>{' '}
+                  {selected.payment.provider === 'esewa'
+                    ? `${selected.payment.refId || '—'} (txn ${selected.payment.transactionUuid || '—'})`
+                    : selected.payment.pidx
+                      ? `${selected.payment.transactionId || '—'} (pidx ${selected.payment.pidx})`
+                      : '—'}
+                </div>
+              )}
             </div>
 
             {selected.items.map((item, i) => (
@@ -172,6 +182,12 @@ export default function AdminOrders() {
             <div className="sum-row">
               <span>Delivery</span><span>{selected.deliveryFee === 0 ? 'FREE' : formatPrice(selected.deliveryFee)}</span>
             </div>
+            {selected.discount > 0 && (
+              <div className="sum-row">
+                <span>Discount {selected.coupon ? `(${selected.coupon.code})` : ''}</span>
+                <span style={{ color: 'var(--success)', fontWeight: 600 }}>− {formatPrice(selected.discount)}</span>
+              </div>
+            )}
             <div className="sum-row total">
               <span>Total</span><span style={{ color: 'var(--primary)' }}>{formatPrice(selected.total)}</span>
             </div>

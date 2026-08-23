@@ -1,28 +1,48 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, formatPrice, formatDate, categoryGradient, categoryIcon } from '../api.js'
-
-const STATUS_LABEL = {
-  pending: 'Pending',
-  confirmed: 'Confirmed',
-  shipped: 'Shipped',
-  delivered: 'Delivered',
-  cancelled: 'Cancelled',
-}
-
-const PAYMENT_LABEL = {
-  pending: 'Pending',
-  paid: 'Paid',
-  refunded: 'Refunded',
-  failed: 'Failed',
-}
+import { useLang } from '../context/LanguageContext.jsx'
+import { useToast } from '../components/Toast.jsx'
 
 export default function OrdersPage() {
+  const { t } = useLang()
   const [params] = useSearchParams()
   const highlight = Number(params.get('highlight'))
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
+  const [cancelling, setCancelling] = useState(false)
+  const toast = useToast()
+
+  const STATUS_LABEL = {
+    pending: t('orders.statusPending'),
+    confirmed: t('orders.statusConfirmed'),
+    shipped: t('orders.statusShipped'),
+    delivered: t('orders.statusDelivered'),
+    cancelled: t('orders.statusCancelled'),
+  }
+
+  const PAYMENT_LABEL = {
+    pending: t('orders.payPending'),
+    paid: t('orders.payPaid'),
+    refunded: t('orders.payRefunded'),
+    failed: t('orders.payFailed'),
+  }
+
+  const cancelOrder = async (order) => {
+    if (!window.confirm(t('orders.cancelConfirm', { id: order.id }))) return
+    setCancelling(true)
+    try {
+      const res = await api.post(`/orders/${order.id}/cancel`)
+      setSelected(res.order)
+      setOrders((list) => list.map((o) => (o.id === order.id ? res.order : o)))
+      toast.success(t('orders.cancelled', { id: order.id }))
+    } catch (err) {
+      toast.error(err.message || t('orders.cancelFailed'))
+    } finally {
+      setCancelling(false)
+    }
+  }
 
   useEffect(() => {
     api.get('/orders')
@@ -42,28 +62,28 @@ export default function OrdersPage() {
   return (
     <div>
       <div className="section-title">
-        <h2>My Orders</h2>
+        <h2>{t('orders.title')}</h2>
       </div>
 
       {loading ? (
-        <div className="loading"><div className="spinner" /> Loading orders...</div>
+        <div className="loading"><div className="spinner" /> {t('orders.loading')}</div>
       ) : orders.length === 0 ? (
         <div className="empty-state">
           <div className="big-icon">📦</div>
-          <h3>No orders yet</h3>
-          <p>When you place an order, it will show up here.</p>
+          <h3>{t('orders.noOrdersTitle')}</h3>
+          <p>{t('orders.noOrdersSub')}</p>
         </div>
       ) : (
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Order #</th>
-                <th>Date</th>
-                <th>Items</th>
-                <th>Payment</th>
-                <th>Total</th>
-                <th>Status</th>
+                <th>{t('orders.orderNo')}</th>
+                <th>{t('orders.date')}</th>
+                <th>{t('orders.items')}</th>
+                <th>{t('orders.payment')}</th>
+                <th>{t('orders.total')}</th>
+                <th>{t('orders.status')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -83,7 +103,7 @@ export default function OrdersPage() {
                   </td>
                   <td>
                     <button className="btn btn-secondary btn-sm" onClick={() => setSelected(o)}>
-                      View
+                      {t('orders.view')}
                     </button>
                   </td>
                 </tr>
@@ -105,7 +125,7 @@ export default function OrdersPage() {
             </div>
 
             <div style={{ background: 'var(--bg)', borderRadius: 12, padding: 14, marginBottom: 16, fontSize: 14 }}>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>Delivery Details</div>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>{t('orders.deliveryDetails')}</div>
               {Object.keys(selected.deliveryDetails || {}).length > 0 ? (
                 Object.entries(selected.deliveryDetails).map(([k, v]) => (
                   <div key={k} style={{ textTransform: 'capitalize' }}>
@@ -114,11 +134,11 @@ export default function OrdersPage() {
                 ))
               ) : (
                 <>
-                  <div><strong>Ship to:</strong> {selected.shippingAddress}</div>
-                  <div><strong>Phone:</strong> {selected.phone}</div>
+                  <div><strong>{t('orders.shipTo')}</strong> {selected.shippingAddress}</div>
+                  <div><strong>{t('orders.phone')}</strong> {selected.phone}</div>
                 </>
               )}
-              <div><strong>Payment:</strong> {selected.paymentMethod}</div>
+              <div><strong>{t('orders.paymentLabel')}</strong> {selected.paymentMethod}</div>
             </div>
 
             {selected.items.map((item, i) => (
@@ -153,20 +173,35 @@ export default function OrdersPage() {
             ))}
 
             <div className="sum-row" style={{ marginTop: 12 }}>
-              <span>Subtotal</span>
+              <span>{t('common.subtotal')}</span>
               <span>{formatPrice(selected.subtotal)}</span>
             </div>
             <div className="sum-row">
-              <span>Delivery</span>
-              <span>{selected.deliveryFee === 0 ? 'FREE' : formatPrice(selected.deliveryFee)}</span>
+              <span>{t('orders.delivery')}</span>
+              <span>{selected.deliveryFee === 0 ? t('cart.free') : formatPrice(selected.deliveryFee)}</span>
             </div>
+            {selected.discount > 0 && (
+              <div className="sum-row">
+                <span>{t('checkout.discount', { code: selected.coupon ? selected.coupon.code : '' })}</span>
+                <span style={{ color: 'var(--success)', fontWeight: 600 }}>− {formatPrice(selected.discount)}</span>
+              </div>
+            )}
             <div className="sum-row total">
-              <span>Total</span>
+              <span>{t('common.total')}</span>
               <span style={{ color: 'var(--primary)' }}>{formatPrice(selected.total)}</span>
             </div>
 
             <div className="modal-actions">
-              <button className="btn btn-outline" onClick={() => setSelected(null)}>Close</button>
+              {['pending', 'confirmed'].includes(selected.status) && (
+                <button
+                  className="btn btn-danger"
+                  onClick={() => cancelOrder(selected)}
+                  disabled={cancelling}
+                >
+                  {cancelling ? t('orders.cancelling') : t('orders.cancelOrder')}
+                </button>
+              )}
+              <button className="btn btn-outline" onClick={() => setSelected(null)}>{t('orders.close')}</button>
             </div>
           </div>
         </div>

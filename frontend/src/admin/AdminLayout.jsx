@@ -8,10 +8,13 @@ const LINKS = [
   { to: '/admin/purchases', icon: '📥', label: 'Stock Intake' },
   { to: '/admin/supplier-payments', icon: '💳', label: 'Supplier Payments' },
   { to: '/admin/profit', icon: '📈', label: 'Profit' },
+  { to: '/admin/coupons', icon: '🎟️', label: 'Coupons' },
+  { to: '/admin/reviews', icon: '⭐', label: 'Reviews' },
   { to: '/admin/categories', icon: '🗂️', label: 'Categories' },
   { to: '/admin/orders', icon: '🧾', label: 'Orders' },
   { to: '/admin/users', icon: '👥', label: 'Users' },
   { to: '/admin/checkout-settings', icon: '🚚', label: 'Delivery Form' },
+  { to: '/admin/payments', icon: '💸', label: 'Payments' },
   { to: '/admin/branding', icon: '🏷️', label: 'Logo & Name' },
   { to: '/admin/store-settings', icon: '🏪', label: 'Store / Invoice' },
 ]

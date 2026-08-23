@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../api.js'
+import { useLang } from '../context/LanguageContext.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 
 export default function Shop() {
+  const { t } = useLang()
   const [params, setParams] = useSearchParams()
   const category = params.get('category') || ''
   const search = params.get('search') || ''
@@ -49,8 +51,8 @@ export default function Shop() {
   return (
     <div>
       <div className="section-title">
-        <h2>{category ? categories.find((c) => c.slug === category)?.name || 'Shop' : 'All Products'}</h2>
-        <span style={{ color: 'var(--muted)', fontSize: 14 }}>{total} products</span>
+        <h2>{category ? categories.find((c) => c.slug === category)?.name || t('shop.title') : t('shop.allProducts')}</h2>
+        <span style={{ color: 'var(--muted)', fontSize: 14 }}>{t('shop.count', { n: total })}</span>
       </div>
 
       <div className="toolbar">
@@ -60,7 +62,7 @@ export default function Shop() {
             <path d="M21 21l-4.35-4.35" />
           </svg>
           <input
-            placeholder="Search momo, rice, t-shirt..."
+            placeholder={t('shop.searchPlaceholder')}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
           />
@@ -70,10 +72,10 @@ export default function Shop() {
           onChange={(e) => updateParam('sort', e.target.value)}
           style={{ width: 180 }}
         >
-          <option value="newest">Newest</option>
-          <option value="price_asc">Price: Low to High</option>
-          <option value="price_desc">Price: High to Low</option>
-          <option value="rating">Top Rated</option>
+          <option value="newest">{t('shop.sortNewest')}</option>
+          <option value="price_asc">{t('shop.sortPriceLow')}</option>
+          <option value="price_desc">{t('shop.sortPriceHigh')}</option>
+          <option value="rating">{t('shop.topRated')}</option>
         </select>
       </div>
 
@@ -82,7 +84,7 @@ export default function Shop() {
           className={`chip ${!category ? 'active' : ''}`}
           onClick={() => updateParam('category', '')}
         >
-          All
+          {t('common.all')}
         </button>
         {categories.map((c) => (
           <button
@@ -96,12 +98,12 @@ export default function Shop() {
       </div>
 
       {loading ? (
-        <div className="loading"><div className="spinner" /> Loading products...</div>
+        <div className="loading"><div className="spinner" /> {t('shop.loading')}</div>
       ) : products.length === 0 ? (
         <div className="empty-state">
           <div className="big-icon">🔍</div>
-          <h3>No products found</h3>
-          <p>Try a different search term or category.</p>
+          <h3>{t('shop.noResults')}</h3>
+          <p>{t('shop.tryAgain')}</p>
         </div>
       ) : (
         <div className="product-grid">

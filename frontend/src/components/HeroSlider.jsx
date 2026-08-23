@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import { useLang } from '../context/LanguageContext.jsx'
 
 const FONT_SIZE_MAP = {
   small: { fontSize: 30, subtitle: 15 },
@@ -9,6 +10,7 @@ const FONT_SIZE_MAP = {
 }
 
 export default function HeroSlider({ banners, autoPlayMs = 6000 }) {
+  const { t } = useLang()
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
 
@@ -121,14 +123,14 @@ export default function HeroSlider({ banners, autoPlayMs = 6000 }) {
           <button
             className="slide-arrow left"
             onClick={prev}
-            aria-label="Previous slide"
+            aria-label={t('slider.prev')}
           >
             ‹
           </button>
           <button
             className="slide-arrow right"
             onClick={next}
-            aria-label="Next slide"
+            aria-label={t('slider.next')}
           >
             ›
           </button>
@@ -139,7 +141,7 @@ export default function HeroSlider({ banners, autoPlayMs = 6000 }) {
                 className={`dot ${i === index ? 'active' : ''}`}
                 style={i === index ? { background: banner.buttonColor } : {}}
                 onClick={() => setIndex(i)}
-                aria-label={`Go to slide ${i + 1}`}
+                aria-label={t('slider.goto', { n: i + 1 })}
               />
             ))}
           </div>

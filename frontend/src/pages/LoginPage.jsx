@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useLang } from '../context/LanguageContext.jsx'
 import { useToast } from '../components/Toast.jsx'
 
 export default function LoginPage() {
   const { login } = useAuth()
+  const { t } = useLang()
   const toast = useToast()
   const navigate = useNavigate()
   const location = useLocation()
@@ -19,32 +21,27 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const user = await login(email, password)
-      toast.success(`Welcome back, ${user.name}!`)
+      toast.success(t('auth.welcomeBack', { name: user.name }))
       const from = location.state?.from
       navigate(from || (user.role === 'admin' ? '/admin' : '/'), { replace: true })
     } catch (err) {
-      setError(err.message || 'Login failed')
+      setError(err.message || t('auth.loginFailed'))
     } finally {
       setLoading(false)
     }
   }
 
-  const fillDemo = () => {
-    setEmail('demo@novanest.com')
-    setPassword('demo123')
-  }
-
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <h1>Welcome Back 👋</h1>
-        <p className="sub">Login to continue shopping at NovaNest.</p>
+        <h1>{t('auth.welcomeTitle')}</h1>
+        <p className="sub">{t('auth.loginSub2')}</p>
 
         {error && <div className="error-banner">{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Email Address</label>
+            <label>{t('auth.email')}</label>
             <input
               type="email"
               placeholder="you@example.com"
@@ -54,7 +51,7 @@ export default function LoginPage() {
             />
           </div>
           <div className="form-group">
-            <label>Password</label>
+            <label>{t('auth.password')}</label>
             <input
               type="password"
               placeholder="••••••••"
@@ -65,22 +62,16 @@ export default function LoginPage() {
           </div>
           <div style={{ textAlign: 'right', marginTop: -4, marginBottom: 14 }}>
             <Link to="/forgot-password" style={{ color: 'var(--primary)', fontSize: 13, fontWeight: 600 }}>
-              Forgot password?
+              {t('auth.forgotLink')}
             </Link>
           </div>
           <button className="btn btn-primary btn-block btn-lg" type="submit" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? t('auth.loggingIn') : t('auth.loginBtn')}
           </button>
         </form>
 
-        <div style={{ textAlign: 'center', marginTop: 16 }}>
-          <button className="btn btn-secondary btn-sm" onClick={fillDemo} type="button">
-            Use Demo Account
-          </button>
-        </div>
-
         <div className="auth-switch">
-          New to NovaNest? <Link to="/signup">Create an account</Link>
+          {t('auth.newHere')} <Link to="/signup">{t('auth.createAccount')}</Link>
         </div>
       </div>
     </div>

@@ -1,23 +1,42 @@
 #!/bin/bash
-# NovaNest startup script - starts both backend and frontend
-# Backend API: http://localhost:3001
-# Frontend (preview): http://localhost:5173 (proxies /api to backend)
+# NovaNest production startup script.
+#
+# 1. Verifies backend/.env exists with a real JWT_SECRET.
+# 2. Builds the frontend for production (frontend/dist).
+# 3. Starts ONLY the Express server on port 3001, which serves both the
+#    /api backend and the built frontend from the same origin (no dev server,
+#    no Vite). Point a reverse proxy at port 3001.
 
-echo "Starting NovaNest..."
+set -e
 
-# Start backend server in background
-cd "$(dirname "$0")/backend" || exit 1
-node server.js &
-BACKEND_PID=$!
-echo "Backend started (PID $BACKEND_PID) on http://localhost:3001"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BACKEND_DIR="$SCRIPT_DIR/backend"
+FRONTEND_DIR="$SCRIPT_DIR/frontend"
+PORT="${PORT:-3001}"
 
-# Start frontend dev server (the exposed port)
-cd "$(dirname "$0")/frontend" || exit 1
-npx vite --port 5173 &
-FRONTEND_PID=$!
-echo "Frontend started (PID $FRONTEND_PID) on http://localhost:5173"
+# --- 1. Validate configuration -------------------------------------------------
+if [ ! -f "$BACKEND_DIR/.env" ]; then
+  echo "ERROR: backend/.env is missing." >&2
+  echo "  Copy backend/.env.example to backend/.env and set a real JWT_SECRET:" >&2
+  echo "    cp backend/.env.example backend/.env" >&2
+  echo "    openssl rand -hex 32   # paste the output into JWT_SECRET= in backend/.env" >&2
+  exit 1
+fi
+if grep -q "JWT_SECRET=change-me-to-a-long-random-hex-string" "$BACKEND_DIR/.env" 2>/dev/null; then
+  echo "ERROR: JWT_SECRET in backend/.env is still the placeholder." >&2
+  echo "  Generate one with 'openssl rand -hex 32' and edit backend/.env." >&2
+  exit 1
+fi
 
-# Cleanup on exit
-trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null" EXIT
+# --- 2. Build frontend ---------------------------------------------------------
+echo "Building frontend..."
+if [ ! -d "$FRONTEND_DIR/node_modules" ]; then
+  echo "Installing frontend dependencies..."
+  (cd "$FRONTEND_DIR" && npm install)
+fi
+(cd "$FRONTEND_DIR" && npm run build)
 
-wait
+# --- 3. Start backend (serves API + static frontend) ---------------------------
+echo "Starting NovaNest on http://localhost:$PORT ..."
+cd "$BACKEND_DIR" || exit 1
+PORT="$PORT" node --env-file-if-exists=.env server.js

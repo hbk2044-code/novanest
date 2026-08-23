@@ -15,6 +15,7 @@ const EMPTY = {
   rating: '4.5',
   featured: true,
   image: '',
+  images: [],
 }
 
 export default function AdminProducts() {
@@ -60,6 +61,7 @@ export default function AdminProducts() {
       rating: p.rating,
       featured: p.featured,
       image: p.image || '',
+      images: p.images && p.images.length ? [...p.images] : p.image ? [p.image] : [],
     })
     setModal(true)
   }
@@ -83,7 +85,10 @@ export default function AdminProducts() {
     setUploading(true)
     try {
       const url = await api.uploadImage(file)
-      setForm((f) => ({ ...f, image: url }))
+      setForm((f) => {
+        const images = [...f.images, url]
+        return { ...f, images, image: images[0] || '' }
+      })
       toast.success('Image uploaded')
     } catch (err) {
       toast.error(err.message || 'Upload failed')
@@ -93,9 +98,11 @@ export default function AdminProducts() {
     }
   }
 
-  const clearImage = () => {
-    setForm((f) => ({ ...f, image: '' }))
-    if (fileRef.current) fileRef.current.value = ''
+  const removeImage = (url) => {
+    setForm((f) => {
+      const images = f.images.filter((u) => u !== url)
+      return { ...f, images, image: images[0] || '' }
+    })
   }
 
   const save = async (e) => {
@@ -210,57 +217,74 @@ export default function AdminProducts() {
             <h2>{editing ? `Edit Product #${editing.id}` : 'Add Product'}</h2>
             <form onSubmit={save}>
               <div className="form-group">
-                <label>Product Image</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <div
+                <label>Product Images</label>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+                  {form.images.map((url, i) => (
+                    <div key={`${url}-${i}`} style={{ position: 'relative', width: 84, height: 84 }}>
+                      <img
+                        src={url}
+                        alt={`image ${i + 1}`}
+                        style={{ width: '100%', height: '100%', borderRadius: 14, objectFit: 'cover', border: '1px solid var(--border)' }}
+                        onError={(e) => { e.target.style.display = 'none' }}
+                      />
+                      {i === 0 && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: 4,
+                            left: 4,
+                            background: 'var(--primary)',
+                            color: '#fff',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: '2px 6px',
+                            borderRadius: 6,
+                          }}
+                        >
+                          Main
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-sm"
+                        onClick={() => removeImage(url)}
+                        style={{ position: 'absolute', top: 4, right: 4, padding: '0 6px', minWidth: 0, borderRadius: 8 }}
+                        aria-label="Remove image"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <label
                     style={{
                       width: 84,
                       height: 84,
                       borderRadius: 14,
-                      overflow: 'hidden',
-                      background: categoryGradient(form.categoryId ? categories.find((c) => c.id === Number(form.categoryId))?.slug || '' : ''),
+                      border: '2px dashed var(--border)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: 36,
-                      flexShrink: 0,
-                      border: '1px solid var(--border)',
+                      cursor: 'pointer',
+                      flexDirection: 'column',
+                      gap: 4,
+                      fontSize: 12,
+                      color: 'var(--muted)',
                     }}
                   >
-                    {form.image ? (
-                      <img
-                        src={form.image}
-                        alt="preview"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => { e.target.style.display = 'none' }}
-                      />
-                    ) : (
-                      <span>📷</span>
-                    )}
-                  </div>
-                  <div style={{ flex: 1 }}>
                     <input
                       ref={fileRef}
                       type="file"
                       accept="image/*"
                       onChange={handleFile}
                       disabled={uploading}
-                      style={{ padding: 6 }}
+                      style={{ display: 'none' }}
                     />
-                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                      {form.image && (
-                        <button type="button" className="btn btn-danger btn-sm" onClick={clearImage}>
-                          Remove Image
-                        </button>
-                      )}
-                      {uploading && (
-                        <span style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>Uploading...</span>
-                      )}
-                    </div>
-                  </div>
+                    <span style={{ fontSize: 22 }}>+</span>
+                    {uploading ? 'Uploading...' : 'Add'}
+                  </label>
                 </div>
                 <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
-                  JPG, PNG, WebP or GIF up to 5MB.
+                  JPG, PNG, WebP or GIF up to 5MB. The first image is the main thumbnail.
                 </p>
               </div>
               <div className="form-group">

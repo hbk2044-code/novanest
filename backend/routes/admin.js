@@ -5,11 +5,16 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { getDb, saveDb, nextId, hashPassword } from "../db.js";
 import { authRequired, adminRequired } from "../middleware.js";
+import { removeReviewImage } from "../reviewUpload.js";
+import { esewaConfig, khaltiConfig } from "../payments.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const UPLOAD_DIR = path.join(__dirname, "..", "uploads", "products");
-const BANNER_UPLOAD_DIR = path.join(__dirname, "..", "uploads", "banners");
-const LOGO_UPLOAD_DIR = path.join(__dirname, "..", "uploads", "logo");
+// Persistent uploads location; override UPLOAD_DIR to a mounted volume in
+// container deployments (same volume as DATA_DIR is recommended).
+const UPLOAD_ROOT = process.env.UPLOAD_DIR || path.join(__dirname, "..", "uploads");
+const UPLOAD_DIR = path.join(UPLOAD_ROOT, "products");
+const BANNER_UPLOAD_DIR = path.join(UPLOAD_ROOT, "banners");
+const LOGO_UPLOAD_DIR = path.join(UPLOAD_ROOT, "logo");
 
 const ALLOWED_EXT = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
 
@@ -48,7 +53,7 @@ const upload = multer({
 
 function removeImageFile(imageUrl) {
   if (!imageUrl || !imageUrl.startsWith("/uploads/")) return;
-  const filePath = path.join(__dirname, "..", imageUrl.replace(/^\/uploads\//, ""));
+  const filePath = path.join(UPLOAD_ROOT, imageUrl.replace(/^\/uploads\//, ""));
   fs.promises.unlink(filePath).catch(() => {});
 }
 
@@ -192,7 +197,7 @@ router.get("/products", (req, res) => {
 });
 
 router.post("/products", (req, res) => {
-  const { name, categoryId, description, price, oldPrice, stock, rating, featured, image, reorderLevel, location, costPrice, unit } = req.body || {};
+  const { name, categoryId, description, price, oldPrice, stock, rating, featured, image, images, reorderLevel, location, costPrice, unit } = req.body || {};
   const db = getDb();
   if (!name || !String(name).trim()) {
     return res.status(400).json({ message: "Product name is required" });
@@ -201,6 +206,12 @@ router.post("/products", (req, res) => {
   if (!category) {
     return res.status(400).json({ message: "Valid category is required" });
   }
+  const primary = typeof image === "string" ? image : "";
+  const gallery = Array.isArray(images)
+    ? images.filter((u) => typeof u === "string" && u.trim())
+    : primary
+      ? [primary]
+      : [];
   const product = {
     id: nextId("product"),
     categoryId: Number(categoryId),
@@ -217,7 +228,8 @@ router.post("/products", (req, res) => {
     rating: Math.min(5, Math.max(1, Number(rating) || 4.5)),
     sold: 0,
     featured: featured !== false,
-    image: typeof image === "string" ? image : "",
+    image: gallery[0] || primary || "",
+    images: gallery.length > 0 ? gallery : primary ? [primary] : [],
     createdAt: new Date().toISOString(),
   };
   const slug = category.slug.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -242,7 +254,7 @@ router.put("/products/:id", (req, res) => {
   const db = getDb();
   const product = db.products.find((p) => String(p.id) === String(req.params.id));
   if (!product) return res.status(404).json({ message: "Product not found" });
-  const { name, categoryId, description, price, oldPrice, stock, rating, featured, image, reorderLevel, location, costPrice, unit } = req.body || {};
+  const { name, categoryId, description, price, oldPrice, stock, rating, featured, image, images, reorderLevel, location, costPrice, unit } = req.body || {};
   if (name !== undefined && String(name).trim()) product.name = String(name).trim();
   if (categoryId !== undefined) product.categoryId = Number(categoryId);
   if (description !== undefined) product.description = description;
@@ -276,6 +288,18 @@ router.put("/products/:id", (req, res) => {
     if (image !== product.image) removeImageFile(product.image);
     product.image = image;
   }
+  if (images !== undefined) {
+    const newGallery = Array.isArray(images)
+      ? images.filter((u) => typeof u === "string" && u.trim())
+      : product.images || [];
+    const oldImages = product.images || [];
+    for (const oldUrl of oldImages) {
+      if (!newGallery.includes(oldUrl)) removeImageFile(oldUrl);
+    }
+    product.images = newGallery;
+    if (product.image && !newGallery.includes(product.image)) product.image = "";
+    if (!product.image && newGallery.length > 0) product.image = newGallery[0];
+  }
   saveDb();
   res.json({ product });
 });
@@ -284,7 +308,9 @@ router.delete("/products/:id", (req, res) => {
   const db = getDb();
   const idx = db.products.findIndex((p) => String(p.id) === String(req.params.id));
   if (idx === -1) return res.status(404).json({ message: "Product not found" });
-  removeImageFile(db.products[idx].image);
+  const product = db.products[idx];
+  removeImageFile(product.image);
+  for (const url of product.images || []) removeImageFile(url);
   db.products.splice(idx, 1);
   saveDb();
   res.json({ message: "Product deleted" });
@@ -813,13 +839,18 @@ router.get("/orders", (req, res) => {
 
   const result = orders.map((o) => {
     const user = db.users.find((u) => u.id === o.userId);
+    const dd = o.deliveryDetails || {};
+    const customerName = user ? user.name : dd.fullName || (o.guestId ? "Guest" : "Deleted User");
+    const email = user ? user.email : dd.email || "";
     return {
       id: o.id,
-      customer: user ? user.name : "Deleted User",
-      email: user ? user.email : "",
+      customer: customerName,
+      email,
       items: o.items,
       subtotal: o.subtotal,
       deliveryFee: o.deliveryFee,
+      discount: o.discount || 0,
+      coupon: o.coupon || null,
       total: o.total,
       status: o.status,
       paymentStatus: o.paymentStatus || "pending",
@@ -827,6 +858,7 @@ router.get("/orders", (req, res) => {
       shippingAddress: o.shippingAddress,
       phone: o.phone,
       paymentMethod: o.paymentMethod,
+      payment: o.payment || null,
       createdAt: o.createdAt,
     };
   });
@@ -855,9 +887,36 @@ router.put("/orders/:id", (req, res) => {
   const { status, paymentStatus } = req.body || {};
   const allowed = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
   const paymentAllowed = ["pending", "paid", "refunded", "failed"];
+
+  const applyStock = (sign) => {
+    for (const it of order.items || []) {
+      const product = db.products.find((p) => p.id === it.productId);
+      if (!product) continue;
+      product.stock = Math.max(0, (product.stock || 0) + sign * it.quantity);
+      product.sold = Math.max(0, (product.sold || 0) - sign * it.quantity);
+      db.seq.movement += 1;
+      db.stockMovements.push({
+        id: db.seq.movement,
+        productId: product.id,
+        productName: product.name,
+        type: sign < 0 ? "cancel" : "sale",
+        quantity: sign < 0 ? it.quantity : -it.quantity,
+        note: sign < 0 ? `Order #${order.id} cancelled (admin)` : `Order #${order.id} un-cancelled (admin)`,
+        user: actorName(db, req),
+        createdAt: new Date().toISOString(),
+      });
+    }
+  };
+
   if (status !== undefined) {
     if (!allowed.includes(status)) {
       return res.status(400).json({ message: "Invalid order status" });
+    }
+    if (status === "cancelled" && order.status !== "cancelled") {
+      applyStock(-1);
+      if (order.paymentStatus === "paid") order.paymentStatus = "refunded";
+    } else if (order.status === "cancelled" && status !== "cancelled") {
+      applyStock(1);
     }
     order.status = status;
   }
@@ -869,6 +928,89 @@ router.put("/orders/:id", (req, res) => {
   }
   saveDb();
   res.json({ order });
+});
+
+// ---------- Coupons ----------
+router.get("/coupons", (req, res) => {
+  const db = getDb();
+  res.json({ coupons: db.coupons.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) });
+});
+
+router.post("/coupons", (req, res) => {
+  const db = getDb();
+  const {
+    code, description, type = "percent", value, minSubtotal = 0,
+    maxDiscount, perUserLimit = 0, totalLimit = 0, active = true,
+    startDate, endDate,
+  } = req.body || {};
+  const cleanCode = String(code || "").trim().toUpperCase();
+  if (!cleanCode) return res.status(400).json({ message: "Coupon code is required" });
+  if (db.coupons.some((c) => c.code.toUpperCase() === cleanCode)) {
+    return res.status(400).json({ message: "A coupon with this code already exists" });
+  }
+  if (!["percent", "fixed"].includes(type)) {
+    return res.status(400).json({ message: "Type must be 'percent' or 'fixed'" });
+  }
+  const coupon = {
+    id: nextId("coupon"),
+    code: cleanCode,
+    description: description || "",
+    type,
+    value: Math.max(0, Number(value) || 0),
+    minSubtotal: Math.max(0, Number(minSubtotal) || 0),
+    maxDiscount: maxDiscount !== undefined && maxDiscount !== "" && maxDiscount !== null ? Math.max(0, Number(maxDiscount)) : null,
+    perUserLimit: Math.max(0, Number(perUserLimit) || 0),
+    totalLimit: Math.max(0, Number(totalLimit) || 0),
+    usedCount: 0,
+    redemptions: [],
+    active: active !== false,
+    startDate: startDate || null,
+    endDate: endDate || null,
+    createdAt: new Date().toISOString(),
+  };
+  db.coupons.push(coupon);
+  saveDb();
+  res.status(201).json({ coupon });
+});
+
+router.put("/coupons/:id", (req, res) => {
+  const db = getDb();
+  const coupon = db.coupons.find((c) => String(c.id) === String(req.params.id));
+  if (!coupon) return res.status(404).json({ message: "Coupon not found" });
+  const {
+    code, description, type, value, minSubtotal, maxDiscount,
+    perUserLimit, totalLimit, active, startDate, endDate,
+  } = req.body || {};
+  if (code !== undefined && String(code).trim()) {
+    const cleanCode = String(code).trim().toUpperCase();
+    if (db.coupons.some((c) => c.id !== coupon.id && c.code.toUpperCase() === cleanCode)) {
+      return res.status(400).json({ message: "A coupon with this code already exists" });
+    }
+    coupon.code = cleanCode;
+  }
+  if (description !== undefined) coupon.description = description;
+  if (type !== undefined && ["percent", "fixed"].includes(type)) coupon.type = type;
+  if (value !== undefined) coupon.value = Math.max(0, Number(value) || 0);
+  if (minSubtotal !== undefined) coupon.minSubtotal = Math.max(0, Number(minSubtotal) || 0);
+  if (maxDiscount !== undefined) {
+    coupon.maxDiscount = maxDiscount === "" || maxDiscount === null ? null : Math.max(0, Number(maxDiscount));
+  }
+  if (perUserLimit !== undefined) coupon.perUserLimit = Math.max(0, Number(perUserLimit) || 0);
+  if (totalLimit !== undefined) coupon.totalLimit = Math.max(0, Number(totalLimit) || 0);
+  if (active !== undefined) coupon.active = active === true;
+  if (startDate !== undefined) coupon.startDate = startDate || null;
+  if (endDate !== undefined) coupon.endDate = endDate || null;
+  saveDb();
+  res.json({ coupon });
+});
+
+router.delete("/coupons/:id", (req, res) => {
+  const db = getDb();
+  const idx = db.coupons.findIndex((c) => String(c.id) === String(req.params.id));
+  if (idx === -1) return res.status(404).json({ message: "Coupon not found" });
+  db.coupons.splice(idx, 1);
+  saveDb();
+  res.json({ message: "Coupon deleted" });
 });
 
 // ---------- Store Info (Invoice Settings) ----------
@@ -917,6 +1059,62 @@ router.put("/settings/branding", (req, res) => {
   };
   saveDb();
   res.json({ branding: db.settings.branding });
+});
+
+// ---------- Payment Gateways (eSewa / Khalti) ----------
+router.get("/settings/payments", (req, res) => {
+  const db = getDb();
+  res.json({
+    payments: db.settings.payments,
+    status: {
+      esewa: {
+        configured: esewaConfig().configured,
+        misconfigured: esewaConfig().misconfigured,
+      },
+      khalti: {
+        configured: khaltiConfig().configured,
+        misconfigured: khaltiConfig().misconfigured,
+      },
+    },
+  });
+});
+
+router.put("/settings/payments", (req, res) => {
+  const db = getDb();
+  const body = req.body || {};
+  const current = db.settings.payments || {};
+
+  const cleanProvider = (name, allowed) => {
+    const cur = current[name] || {};
+    const b = body[name] || {};
+    const out = { ...cur };
+    for (const k of allowed) {
+      if (b[k] !== undefined && b[k] !== null) {
+        if (k === "enabled" || k === "testMode") out[k] = Boolean(b[k]);
+        else out[k] = String(b[k]).trim();
+      }
+    }
+    return out;
+  };
+
+  db.settings.payments = {
+    esewa: cleanProvider("esewa", ["enabled", "testMode", "productCode", "secretKey"]),
+    khalti: cleanProvider("khalti", ["enabled", "testMode", "secretKey"]),
+  };
+  saveDb();
+  res.json({
+    payments: db.settings.payments,
+    status: {
+      esewa: {
+        configured: esewaConfig().configured,
+        misconfigured: esewaConfig().misconfigured,
+      },
+      khalti: {
+        configured: khaltiConfig().configured,
+        misconfigured: khaltiConfig().misconfigured,
+      },
+    },
+  });
 });
 
 // ---------- Users ----------
@@ -1298,6 +1496,134 @@ router.post("/settings/hero-banners/reorder", (req, res) => {
   }
   saveDb();
   res.json({ message: "Order updated", banners: db.settings.heroBanners.slice().sort((a, b) => a.sortOrder - b.sortOrder).map(bannerField) });
+});
+
+// ---------- Review moderation ----------
+
+// Rating display setting: whether to show a product's pre-set rating when it
+// has no approved reviews yet (off by default so new stores don't look fake).
+router.get("/settings/reviews", (req, res) => {
+  const db = getDb();
+  res.json({ showDefaultRating: !!db.settings.showDefaultRating });
+});
+
+router.put("/settings/reviews", (req, res) => {
+  const db = getDb();
+  db.settings.showDefaultRating = !!(req.body?.showDefaultRating);
+  saveDb();
+  res.json({ showDefaultRating: db.settings.showDefaultRating });
+});
+
+function adminReviewField(r, db) {
+  const product = db.products.find((p) => p.id === r.productId);
+  let customerName = r.name;
+  if (typeof r.owner === "string" && r.owner.startsWith("user:")) {
+    const u = db.users.find((x) => String(x.id) === r.owner.slice(5));
+    if (u) customerName = `${u.name} (${u.email})`;
+  }
+  return {
+    id: r.id,
+    productId: r.productId,
+    productName: product ? product.name : `#${r.productId}`,
+    productImage: product ? product.image || (product.images && product.images[0]) || "" : "",
+    name: r.name,
+    customerName,
+    owner: r.owner,
+    rating: r.rating,
+    comment: r.comment,
+    images: r.images || [],
+    status: r.status,
+    featured: !!r.featured,
+    verified: !!r.verified,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  };
+}
+
+// List reviews with optional filters: ?status=pending&productId=3
+router.get("/reviews", (req, res) => {
+  const db = getDb();
+  const { status, productId, search } = req.query;
+  let list = (db.reviews || []).slice();
+  if (status) list = list.filter((r) => r.status === status);
+  if (productId) list = list.filter((r) => String(r.productId) === String(productId));
+  if (search) {
+    const q = String(search).toLowerCase();
+    list = list.filter(
+      (r) =>
+        r.name.toLowerCase().includes(q) ||
+        r.comment.toLowerCase().includes(q)
+    );
+  }
+  list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const counts = { pending: 0, approved: 0, rejected: 0, hidden: 0 };
+  for (const r of db.reviews || []) counts[r.status] = (counts[r.status] || 0) + 1;
+  res.json({
+    reviews: list.map((r) => adminReviewField(r, db)),
+    counts,
+  });
+});
+
+// Approve / reject / hide / feature a review.
+router.patch("/reviews/:id", (req, res) => {
+  const db = getDb();
+  const review = (db.reviews || []).find((r) => String(r.id) === String(req.params.id));
+  if (!review) return res.status(404).json({ message: "Review not found" });
+
+  const { status, featured } = req.body || {};
+  if (status !== undefined) {
+    const allowed = ["pending", "approved", "rejected", "hidden"];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+    review.status = status;
+  }
+  if (featured !== undefined) {
+    review.featured = !!featured;
+  }
+  review.updatedAt = new Date().toISOString();
+  saveDb();
+  res.json({ message: "Review updated", review: adminReviewField(review, db) });
+});
+
+// Delete a review (and its uploaded images).
+router.delete("/reviews/:id", (req, res) => {
+  const db = getDb();
+  const idx = (db.reviews || []).findIndex((r) => String(r.id) === String(req.params.id));
+  if (idx === -1) return res.status(404).json({ message: "Review not found" });
+  const [removed] = db.reviews.splice(idx, 1);
+  for (const img of removed.images || []) removeReviewImage(img);
+  saveDb();
+  res.json({ message: "Review deleted" });
+});
+
+// Bulk moderation: activate / hide / reject / delete many reviews at once.
+// body: { ids: number[], action: "approved" | "hidden" | "rejected" | "delete" }
+router.post("/reviews/bulk", (req, res) => {
+  const { ids, action } = req.body || {};
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ message: "ids must be a non-empty array" });
+  }
+  const allowed = ["approved", "hidden", "rejected", "delete"];
+  if (!allowed.includes(action)) {
+    return res.status(400).json({ message: "Invalid bulk action" });
+  }
+  const db = getDb();
+  let count = 0;
+  for (const id of ids) {
+    const r = (db.reviews || []).find((x) => String(x.id) === String(id));
+    if (!r) continue;
+    if (action === "delete") {
+      for (const img of r.images || []) removeReviewImage(img);
+      db.reviews = db.reviews.filter((x) => x !== r);
+    } else {
+      r.status = action;
+      r.updatedAt = new Date().toISOString();
+    }
+    count++;
+  }
+  saveDb();
+  res.json({ message: `Updated ${count} review(s)`, count });
 });
 
 export default router;

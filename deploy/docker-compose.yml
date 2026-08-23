@@ -1,0 +1,29 @@
+# NovaNest - Docker Compose (Hostinger VPS / Cloud / any Docker host)
+#
+# Usage:
+#   cp backend/.env.example backend/.env   # then edit JWT_SECRET, ADMIN_*, etc.
+#   docker compose -f deploy/docker-compose.yml up -d --build
+#
+# Data is kept in the named volume `novanest-data` and survives restarts.
+
+services:
+  novanest:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: novanest:latest
+    container_name: novanest
+    restart: unless-stopped
+    env_file:
+      - ../backend/.env
+    environment:
+      DATA_DIR: /data
+      UPLOAD_DIR: /data/uploads
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    volumes:
+      - novanest-data:/data
+
+volumes:
+  novanest-data:
