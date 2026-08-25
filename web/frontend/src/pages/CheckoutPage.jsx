@@ -172,25 +172,34 @@ export default function CheckoutPage() {
             />
           </div>
         )
-      case 'province':
+      case 'province': {
+        const count = (nepalData || []).length
         return (
           <div className="form-group" key={f.id}>
-            {label}
+            <label>
+              {f.label} <span style={{ color: 'var(--muted)', fontWeight: 500 }}>({count})</span>
+              {f.required ? <span style={{ color: 'var(--danger)' }}> *</span> : ` ${t('common.optional')}`}
+            </label>
             <select value={value} onChange={(e) => setForm((s) => ({ ...s, province: e.target.value, district: '', city: '', ward: '', place: '' }))} required={required}>
-              <option value="">{t('checkout.selectProvince')}</option>
+              <option value="">{t('checkout.selectProvince')} ({count})</option>
               {(nepalData || []).map((p) => (
                 <option key={p.name} value={p.name}>{p.name}</option>
               ))}
             </select>
           </div>
         )
+      }
       case 'district': {
         const province = nepalData?.find((p) => p.name === form.province)
+        const count = province?.districts?.length || 0
         return (
           <div className="form-group" key={f.id}>
-            {label}
+            <label>
+              {f.label} <span style={{ color: 'var(--muted)', fontWeight: 500 }}>({province ? count : '...'})</span>
+              {f.required ? <span style={{ color: 'var(--danger)' }}> *</span> : ` ${t('common.optional')}`}
+            </label>
             <select value={value} onChange={(e) => setForm((s) => ({ ...s, district: e.target.value, city: '', ward: '', place: '' }))} required={required} disabled={!province}>
-              <option value="">{province ? t('checkout.selectDistrict') : t('checkout.selectProvinceFirst')}</option>
+              <option value="">{province ? `${t('checkout.selectDistrict')} (${count})` : t('checkout.selectProvinceFirst')}</option>
               {(province?.districts || []).map((d) => (
                 <option key={d.name} value={d.name}>{d.name}</option>
               ))}
@@ -201,11 +210,15 @@ export default function CheckoutPage() {
       case 'city': {
         const province = nepalData?.find((p) => p.name === form.province)
         const district = province?.districts?.find((d) => d.name === form.district)
+        const count = district?.cities?.length || 0
         return (
           <div className="form-group" key={f.id}>
-            {label}
+            <label>
+              {f.label} <span style={{ color: 'var(--muted)', fontWeight: 500 }}>({district ? count : '...'})</span>
+              {f.required ? <span style={{ color: 'var(--danger)' }}> *</span> : ` ${t('common.optional')}`}
+            </label>
             <select value={value} onChange={(e) => setForm((s) => ({ ...s, city: e.target.value, ward: '', place: '' }))} required={required} disabled={!district}>
-              <option value="">{district ? t('checkout.selectCity') : t('checkout.selectDistrictFirst')}</option>
+              <option value="">{district ? `${t('checkout.selectCity')} (${count})` : t('checkout.selectDistrictFirst')}</option>
               {(district?.cities || []).map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
@@ -217,11 +230,15 @@ export default function CheckoutPage() {
         const province = nepalData?.find((p) => p.name === form.province)
         const district = province?.districts?.find((d) => d.name === form.district)
         const wardOptions = (f.options && f.options.length) ? f.options : Array.from({ length: 14 }, (_, i) => String(i + 1))
+        const count = wardOptions.length
         return (
           <div className="form-group" key={f.id}>
-            {label}
+            <label>
+              {f.label} <span style={{ color: 'var(--muted)', fontWeight: 500 }}>({count})</span>
+              {f.required ? <span style={{ color: 'var(--danger)' }}> *</span> : ` ${t('common.optional')}`}
+            </label>
             <select value={value} onChange={(e) => setForm((s) => ({ ...s, ward: e.target.value, place: '' }))} required={required} disabled={!form.city}>
-              <option value="">{form.city ? t('checkout.selectWard') : t('checkout.selectCityFirst')}</option>
+              <option value="">{form.city ? `${t('checkout.selectWard')} (${count})` : t('checkout.selectCityFirst')}</option>
               {wardOptions.map((w) => (
                 <option key={w} value={w}>{t('checkout.wardLabel', { n: w })}</option>
               ))}
