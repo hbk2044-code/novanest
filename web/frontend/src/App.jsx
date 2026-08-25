@@ -1,6 +1,7 @@
 import { Routes, Route, useLocation } from 'react-router-dom'
 import Header from './components/Header.jsx'
 import Footer from './components/Footer.jsx'
+import WhatsAppFloat from './components/WhatsAppFloat.jsx'
 import { ToastProvider } from './components/Toast.jsx'
 import Home from './pages/Home.jsx'
 import Shop from './pages/Shop.jsx'
@@ -111,6 +112,7 @@ export default function App() {
         </div>
       </main>
       <Footer />
+      <WhatsAppFloat />
     </ToastProvider>
   )
 }
