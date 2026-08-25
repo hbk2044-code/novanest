@@ -134,6 +134,28 @@ const EMPTY_DB = {
         builtin: true,
         placeholder: "Select your city",
       },
+      {
+        id: 9,
+        key: "ward",
+        label: "Ward No.",
+        type: "ward",
+        active: true,
+        required: true,
+        builtin: true,
+        placeholder: "Select your ward",
+        options: [],
+      },
+      {
+        id: 10,
+        key: "place",
+        label: "Place Name",
+        type: "place",
+        active: true,
+        required: false,
+        builtin: true,
+        placeholder: "e.g. Tole, chowk, landmark or area",
+        options: [],
+      },
     ],
     heroBanners: [
       {
@@ -266,10 +288,10 @@ export function loadDb() {
   if (!db.settings.checkoutFields || db.settings.checkoutFields.length === 0) {
     db.settings.checkoutFields = structuredClone(EMPTY_DB.settings.checkoutFields);
   } else {
-    // Migration: add Nepal address fields (province/district/city) if missing
+    // Migration: add Nepal address fields (province/district/city/ward/place) if missing
     const keys = db.settings.checkoutFields.map((f) => f.key);
     const nAddress = EMPTY_DB.settings.checkoutFields.filter((f) =>
-      ["province", "district", "city"].includes(f.key)
+      ["province", "district", "city", "ward", "place"].includes(f.key)
     );
     for (const f of nAddress) {
       if (!keys.includes(f.key)) {

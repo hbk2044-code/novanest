@@ -11,7 +11,9 @@ const FIELD_TYPES = [
   { value: 'tel', label: 'Phone' },
   { value: 'province', label: 'Province (Nepal)' },
   { value: 'district', label: 'District (Nepal)' },
-  { value: 'city', label: 'City (Nepal)' },
+  { value: 'city', label: 'City / Municipality (Nepal)' },
+  { value: 'ward', label: 'Ward No. (Nepal)' },
+  { value: 'place', label: 'Place Name (auto-suggest)' },
 ]
 
 const NEW_FIELD = { label: '', type: 'text', required: false, active: true, placeholder: '', options: '' }

@@ -176,7 +176,7 @@ export default function CheckoutPage() {
         return (
           <div className="form-group" key={f.id}>
             {label}
-            <select value={value} onChange={(e) => setForm((s) => ({ ...s, province: e.target.value, district: '', city: '' }))} required={required}>
+            <select value={value} onChange={(e) => setForm((s) => ({ ...s, province: e.target.value, district: '', city: '', ward: '', place: '' }))} required={required}>
               <option value="">{t('checkout.selectProvince')}</option>
               {(nepalData || []).map((p) => (
                 <option key={p.name} value={p.name}>{p.name}</option>
@@ -189,7 +189,7 @@ export default function CheckoutPage() {
         return (
           <div className="form-group" key={f.id}>
             {label}
-            <select value={value} onChange={(e) => setForm((s) => ({ ...s, district: e.target.value, city: '' }))} required={required} disabled={!province}>
+            <select value={value} onChange={(e) => setForm((s) => ({ ...s, district: e.target.value, city: '', ward: '', place: '' }))} required={required} disabled={!province}>
               <option value="">{province ? t('checkout.selectDistrict') : t('checkout.selectProvinceFirst')}</option>
               {(province?.districts || []).map((d) => (
                 <option key={d.name} value={d.name}>{d.name}</option>
@@ -204,12 +204,50 @@ export default function CheckoutPage() {
         return (
           <div className="form-group" key={f.id}>
             {label}
-            <select value={value} onChange={set(f.key)} required={required} disabled={!district}>
+            <select value={value} onChange={(e) => setForm((s) => ({ ...s, city: e.target.value, ward: '', place: '' }))} required={required} disabled={!district}>
               <option value="">{district ? t('checkout.selectCity') : t('checkout.selectDistrictFirst')}</option>
               {(district?.cities || []).map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
+          </div>
+        )
+      }
+      case 'ward': {
+        const province = nepalData?.find((p) => p.name === form.province)
+        const district = province?.districts?.find((d) => d.name === form.district)
+        const wardOptions = (f.options && f.options.length) ? f.options : Array.from({ length: 14 }, (_, i) => String(i + 1))
+        return (
+          <div className="form-group" key={f.id}>
+            {label}
+            <select value={value} onChange={(e) => setForm((s) => ({ ...s, ward: e.target.value, place: '' }))} required={required} disabled={!form.city}>
+              <option value="">{form.city ? t('checkout.selectWard') : t('checkout.selectCityFirst')}</option>
+              {wardOptions.map((w) => (
+                <option key={w} value={w}>{t('checkout.wardLabel', { n: w })}</option>
+              ))}
+            </select>
+          </div>
+        )
+      }
+      case 'place': {
+        const placeOptions = f.options || []
+        return (
+          <div className="form-group" key={f.id}>
+            {label}
+            <input
+              list={`places-${f.id}`}
+              placeholder={f.placeholder}
+              value={value}
+              onChange={set(f.key)}
+              required={required}
+            />
+            {placeOptions.length > 0 && (
+              <datalist id={`places-${f.id}`}>
+                {placeOptions.map((o) => (
+                  <option key={o} value={o} />
+                ))}
+              </datalist>
+            )}
           </div>
         )
       }

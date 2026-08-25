@@ -1249,7 +1249,7 @@ router.delete("/users/:id", (req, res) => {
 });
 
 // ---------- Checkout Form Settings ----------
-const FIELD_TYPES = ["text", "textarea", "select", "number", "email", "tel", "province", "district", "city"];
+const FIELD_TYPES = ["text", "textarea", "select", "number", "email", "tel", "province", "district", "city", "ward", "place"];
 
 function publicField(f) {
   return {
@@ -1350,6 +1350,8 @@ router.post("/settings/checkout-fields/reset", (req, res) => {
     { key: "province", label: "Province", type: "province", required: true, placeholder: "Select your province" },
     { key: "district", label: "District", type: "district", required: true, placeholder: "Select your district" },
     { key: "city", label: "City / Municipality", type: "city", required: true, placeholder: "Select your city" },
+    { key: "ward", label: "Ward No.", type: "ward", required: true, placeholder: "Select your ward" },
+    { key: "place", label: "Place Name", type: "place", required: false, placeholder: "e.g. Tole, chowk, landmark or area" },
     { key: "notes", label: "Delivery Notes (Optional)", type: "textarea", required: false, placeholder: "e.g. Landmark, preferred delivery time" },
   ]) {
     id += 1;
