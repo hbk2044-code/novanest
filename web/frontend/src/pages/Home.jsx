@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api.js'
 import { useLang } from '../context/LanguageContext.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import HeroSlider from '../components/HeroSlider.jsx'
+import useRefreshOnResume from '../hooks/useRefreshOnResume.js'
 
 export default function Home() {
   const { t } = useLang()
@@ -12,12 +13,18 @@ export default function Home() {
   const [deals, setDeals] = useState([])
   const [banners, setBanners] = useState([])
 
-  useEffect(() => {
+  const load = useCallback(() => {
     api.get('/categories').then((d) => setCategories(d.categories)).catch(() => {})
     api.get('/products?featured=true&limit=8').then((d) => setFeatured(d.products)).catch(() => {})
     api.get('/products?sort=price_desc&limit=4').then((d) => setDeals(d.products)).catch(() => {})
     api.get('/settings/hero-banners', { auth: false }).then((d) => setBanners(d.banners)).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  useRefreshOnResume(load)
 
   return (
     <div>

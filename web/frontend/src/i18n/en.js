@@ -161,6 +161,7 @@ export const en = {
   'shop.sortPopular': 'Popular',
   'shop.sortPriceLow': 'Price: Low to High',
   'shop.sortPriceHigh': 'Price: High to Low',
+  'shop.refresh': 'Refresh',
 
   'cart.title': 'Your Cart',
   'cart.empty': 'Your cart is empty',

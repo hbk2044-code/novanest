@@ -162,6 +162,7 @@ export const ne = {
   'shop.sortPopular': 'लोकप्रिय',
   'shop.sortPriceLow': 'मूल्य: कम देखि उच्च',
   'shop.sortPriceHigh': 'मूल्य: उच्च देखि कम',
+  'shop.refresh': 'रिफ्रेस',
 
   'cart.title': 'तपाईंको कार्ट',
   'cart.empty': 'तपाईंको कार्ट खाली छ',

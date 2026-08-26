@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../api.js'
 import { useLang } from '../context/LanguageContext.jsx'
 import ProductCard from '../components/ProductCard.jsx'
+import useRefreshOnResume from '../hooks/useRefreshOnResume.js'
 
 export default function Shop() {
   const { t } = useLang()
@@ -15,26 +16,37 @@ export default function Shop() {
   const [products, setProducts] = useState([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [searchInput, setSearchInput] = useState(search)
 
   useEffect(() => {
     api.get('/categories').then((d) => setCategories(d.categories)).catch(() => {})
   }, [])
 
-  useEffect(() => {
-    setLoading(true)
+  const load = useCallback(() => {
     const q = new URLSearchParams()
     if (category) q.set('category', category)
     if (search) q.set('search', search)
     if (sort) q.set('sort', sort)
-    api.get(`/products?${q.toString()}`)
+    return api.get(`/products?${q.toString()}`)
       .then((d) => {
         setProducts(d.products)
         setTotal(d.total)
       })
       .catch(() => {})
-      .finally(() => setLoading(false))
   }, [category, search, sort])
+
+  useEffect(() => {
+    setLoading(true)
+    load().finally(() => setLoading(false))
+  }, [load])
+
+  const refresh = useCallback(() => {
+    setRefreshing(true)
+    load().finally(() => setRefreshing(false))
+  }, [load])
+
+  useRefreshOnResume(refresh)
 
   const updateParam = (key, value) => {
     const next = new URLSearchParams(params)
@@ -77,6 +89,14 @@ export default function Shop() {
           <option value="price_desc">{t('shop.sortPriceHigh')}</option>
           <option value="rating">{t('shop.topRated')}</option>
         </select>
+        <button
+          className="btn btn-outline btn-sm"
+          onClick={refresh}
+          disabled={refreshing}
+          title={t('shop.refresh')}
+        >
+          {refreshing ? t('common.saving') : '↻ ' + t('shop.refresh')}
+        </button>
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 28 }}>
