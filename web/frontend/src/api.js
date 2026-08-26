@@ -26,13 +26,17 @@ export function apiOrigin() {
 }
 
 // Resolves relative media URLs (/uploads/...) to absolute ones in native builds,
-// where the webview cannot reach the backend's static file path on its own.
+// where the webview cannot reach the backend's static file path on its own. A
+// version query busts stale edge/CDN caches so header or content changes take
+// effect immediately on mobile.
+const MEDIA_VERSION = '2'
 export function resolveImage(url) {
   if (!url) return url
   if (/^https?:\/\//i.test(url)) return url
   if (!IS_NATIVE) return url
   const base = API_BASE.replace(/\/api$/, '').replace(/\/+$/, '')
-  return url.startsWith('/') ? base + url : base + '/' + url
+  const abs = url.startsWith('/') ? base + url : base + '/' + url
+  return abs + (abs.includes('?') ? '&' : '?') + `v=${MEDIA_VERSION}`
 }
 
 function getToken() {

@@ -49,6 +49,11 @@ app.use(
         "form-action": ["'self'", "https:"],
       },
     },
+    // The Capacitor webview serves the app from "https://localhost" while
+    // media (/uploads/...) is served from the backend origin. Helmet's default
+    // CORP of "same-origin" would block those cross-origin image loads, so
+    // allow cross-origin embedding of public media.
+    crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
 app.use(cors());
