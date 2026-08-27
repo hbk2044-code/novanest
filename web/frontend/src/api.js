@@ -9,11 +9,11 @@ const NATIVE_API_BASE = 'https://3001-e3a0e157679840f9.monkeycode-ai.live/api'
 
 const IS_NATIVE = Capacitor.isNativePlatform()
 
-const API_BASE = IS_NATIVE
-  ? (import.meta.env.VITE_API_URL
-    ? String(import.meta.env.VITE_API_URL).replace(/\/+$/, '')
-    : NATIVE_API_BASE)
-  : '/api'
+// VITE_API_URL (when set at build time) overrides the API root in every build:
+// web static hosts such as GitHub Pages set it to a deployed backend origin.
+const API_BASE = import.meta.env.VITE_API_URL
+  ? String(import.meta.env.VITE_API_URL).replace(/\/+$/, '')
+  : (IS_NATIVE ? NATIVE_API_BASE : '/api')
 
 // Origin of the backend (e.g. https://yourdomain.com). Payment gateways must
 // redirect back to a reachable HTTP(S) origin — never the native webview's
@@ -33,10 +33,18 @@ const MEDIA_VERSION = '2'
 export function resolveImage(url) {
   if (!url) return url
   if (/^https?:\/\//i.test(url)) return url
-  if (!IS_NATIVE) return url
-  const base = API_BASE.replace(/\/api$/, '').replace(/\/+$/, '')
-  const abs = url.startsWith('/') ? base + url : base + '/' + url
-  return abs + (abs.includes('?') ? '&' : '?') + `v=${MEDIA_VERSION}`
+  if (IS_NATIVE) {
+    const base = API_BASE.replace(/\/api$/, '').replace(/\/+$/, '')
+    const abs = url.startsWith('/') ? base + url : base + '/' + url
+    return abs + (abs.includes('?') ? '&' : '?') + `v=${MEDIA_VERSION}`
+  }
+  // Web build against a remote backend (e.g. GitHub Pages): turn relative media
+  // paths into absolute ones pointing at that backend.
+  if (API_BASE.startsWith('http')) {
+    const base = API_BASE.replace(/\/api$/, '').replace(/\/+$/, '')
+    return url.startsWith('/') ? base + url : base + '/' + url
+  }
+  return url
 }
 
 function getToken() {
