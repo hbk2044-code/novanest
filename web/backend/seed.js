@@ -169,7 +169,7 @@ export function seedDatabase() {
         .replace(/[^A-Z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
       p.sku = `NN-${slug || "GEN"}-${String(p.id).padStart(4, "0")}`;
-      p.image = placeholderImage(p, i + 1, catSlugById[p.categoryId]);
+      p.image = placeholderImage(p, p.id, catSlugById[p.categoryId]);
       db.products.push(p);
     });
   }
@@ -225,6 +225,17 @@ export function seedDatabase() {
       R(26, guest(), "Meera", 4, "Nice cream, skin feels soft."),
       R(24, guest(), "Kabita", 5, "Saree is gorgeous, stitching is neat.")
     );
+  }
+
+  // Idempotent: fill in placeholder images for any product that lacks one
+  // (e.g. a database carried over from before image seeding existed). Runs on
+  // every start so images always appear even if the data directory persists.
+  const catSlugByIdAll = Object.fromEntries(db.categories.map((c) => [c.id, c.slug]));
+  const productsNeedingImage = db.products.filter(
+    (p) => !p.image && !(Array.isArray(p.images) && p.images.length)
+  );
+  for (const p of productsNeedingImage) {
+    p.image = placeholderImage(p, p.id, catSlugByIdAll[p.categoryId]);
   }
 
   saveDb();
