@@ -1,5 +1,46 @@
 import { getDb, saveDb, nextId, hashPassword } from "./db.js";
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const CATEGORY_COLORS = {
+  food: "#f97316",
+  groceries: "#22c55e",
+  clothes: "#3b82f6",
+  "cooked-food": "#ef4444",
+  cosmetics: "#ec4899",
+  "used-electronics": "#8b5cf6",
+};
+
+// Generates a local SVG placeholder image for seeded demo products so the
+// catalog looks populated out of the box (no external image service needed).
+// Files are written to <UPLOAD_DIR>/placeholders and referenced via /uploads.
+function placeholderImage(product, index, categorySlug) {
+  const uploadsDir =
+    process.env.UPLOAD_DIR ||
+    path.join(path.dirname(fileURLToPath(import.meta.url)), "uploads");
+  const dir = path.join(uploadsDir, "placeholders");
+  fs.mkdirSync(dir, { recursive: true });
+  const file = `${categorySlug || "gen"}-${String(index).padStart(3, "0")}.svg`;
+  const url = `/uploads/placeholders/${file}`;
+  const filePath = path.join(dir, file);
+  if (!fs.existsSync(filePath)) {
+    const name = String(product.name || "Product")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    const color = CATEGORY_COLORS[categorySlug] || "#64748b";
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">` +
+      `<rect width="600" height="600" fill="${color}"/>` +
+      `<text x="50%" y="45%" font-family="Arial, sans-serif" font-size="42" font-weight="bold" fill="#ffffff" text-anchor="middle">${name}</text>` +
+      `<text x="50%" y="55%" font-family="Arial, sans-serif" font-size="26" fill="rgba(255,255,255,0.75)" text-anchor="middle">NovaNest</text>` +
+      `</svg>`;
+    fs.writeFileSync(filePath, svg);
+  }
+  return url;
+}
 
 export function seedDatabase() {
   const db = getDb();
@@ -122,14 +163,15 @@ export function seedDatabase() {
       P("used-electronics", "LED Monitor 22\"", 8000, 10000, 6, 4.3, "Used 22 inch LED monitor, no dead pixels."),
     ];
     const catSlugById = Object.fromEntries(db.categories.map((c) => [c.id, c.slug]));
-    for (const p of products) {
+    products.forEach((p, i) => {
       const slug = (catSlugById[p.categoryId] || "gen")
         .toUpperCase()
         .replace(/[^A-Z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
       p.sku = `NN-${slug || "GEN"}-${String(p.id).padStart(4, "0")}`;
+      p.image = placeholderImage(p, i + 1, catSlugById[p.categoryId]);
       db.products.push(p);
-    }
+    });
   }
 
   if (db.coupons.length === 0) {
